@@ -177,57 +177,24 @@ export type Database = {
       }
       Usuario: {
         Row: {
-          alias: string
           contrasenya: string
           correo: string
           id: number
           rol: Database["public"]["Enums"]["roles"]
         }
         Insert: {
-          alias: string
           contrasenya: string
           correo: string
           id?: number
           rol: Database["public"]["Enums"]["roles"]
         }
         Update: {
-          alias?: string
           contrasenya?: string
           correo?: string
           id?: number
           rol?: Database["public"]["Enums"]["roles"]
         }
         Relationships: []
-      }
-      UsuarioReceta: {
-        Row: {
-          id_receta: number
-          id_usuario: number
-        }
-        Insert: {
-          id_receta: number
-          id_usuario: number
-        }
-        Update: {
-          id_receta?: number
-          id_usuario?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "UsuarioReceta_id_receta_fkey"
-            columns: ["id_receta"]
-            isOneToOne: false
-            referencedRelation: "Receta"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "UsuarioReceta_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "Usuario"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {

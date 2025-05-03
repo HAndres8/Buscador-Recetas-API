@@ -2,10 +2,12 @@ import cors from "cors"
 import morgan from "morgan"
 import dotenv from "dotenv"
 import express from "express"
+import { Express } from "express"
 import ConnectionSupabase from "./Connection"
+import RecetaRoute from "../routes/RecetaRoute"
 
 class Server {
-   public app: express.Application
+   public app: Express
    
    constructor() {
       dotenv.config({ path: ".env" })
@@ -24,7 +26,7 @@ class Server {
    }
 
    public startRoutes() {
-
+      this.app.use("/api/recetas", RecetaRoute)
    }
 
    public startServer() {
