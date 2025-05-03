@@ -20,7 +20,7 @@ export interface Receta {
    duracion: number
    porciones: number
    dificultad: Database["public"]["Enums"]["dificultades"]
-   categoria: CategoriaReceta[]
+   categorias: CategoriaReceta[]
    ingredientes: IngredienteReceta[]
    pasos: string[]
    etiqueta_nutricional: string[] | null
@@ -28,5 +28,12 @@ export interface Receta {
 }
 
 export interface ResumenReceta {
-   
+   id: number
+   nombre: string
+   pais: string
+   duracion: number
+   porciones: number
+   dificultad: Database["public"]["Enums"]["dificultades"]
+   categorias: CategoriaReceta[]
+   imagen_url: string
 }

@@ -22,6 +22,41 @@ class RecetaController {
       res.status(200).json(data)
       return
    }
+
+   public async getResumenRecetas(req: Request, res: Response) {
+      const { pais, categoria, pag } = req.query
+      const page = Number(pag) || 1
+
+      if (pais && categoria) {
+         res.status(400).json({ error: 'No se puede filtrar por ambos campos' })
+         return
+      }
+      if (pais && typeof pais !== 'string') {
+         res.status(400).json({ error: 'El país debe ser string' })
+         return
+      }
+      if (categoria && typeof categoria !== 'string') {
+         res.status(400).json({ error: 'La categoria debe ser string' })
+         return
+      }
+      if (!Number.isInteger(page) || page <= 0) {
+         res.status(400).json({ error: 'La pagina a buscar debe ser un número válido' })
+         return
+      }
+
+      const { data, count, error } = await RecetaService.getRecetas(pais ?? null, categoria ?? null, page)
+      if (error) {
+         res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
+         return
+      }
+      if (!data) {
+         res.status(404).json({ response: 'Recetas no disponibles' })
+         return
+      }
+
+      res.status(200).json({ data, count })
+      return
+   }
 }
 
 const recetaController = new RecetaController()

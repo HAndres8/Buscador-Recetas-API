@@ -10,7 +10,8 @@ class RecetaRoute {
    }
 
    public routesConfig() {
-      this.ApiRoute.get("/:id", recetaController.getRecetaById)
+      this.ApiRoute.get("/receta/:id", recetaController.getRecetaById)
+      this.ApiRoute.get("/listado", recetaController.getResumenRecetas)
    }
 }
 
