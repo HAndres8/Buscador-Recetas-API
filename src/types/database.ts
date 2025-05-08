@@ -201,7 +201,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_recetas_especificas: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+          ids_recetas: number[]
+        }
+        Returns: {
+          id: number
+          similarity: number
+        }[]
+      }
+      match_recetas_global: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+          ids_recetas: number[]
+        }
+        Returns: {
+          id: number
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       categorias: "plato" | "coccion" | "momento"
