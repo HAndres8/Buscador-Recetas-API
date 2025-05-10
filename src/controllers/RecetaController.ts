@@ -49,12 +49,34 @@ class RecetaController {
          res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
          return
       }
-      if (!data) {
+      if (data && data.length == 0) {
          res.status(404).json({ response: 'Recetas no disponibles' })
          return
       }
 
       res.status(200).json({ data, count })
+      return
+   }
+
+   public async getMejoresRecetas(req: Request, res: Response) {
+      const prompt = req.body.solicitud
+
+      if (typeof prompt !== 'string') {
+         res.status(400).json({ error: 'La solicitud debe ser un string' })
+         return
+      }
+
+      const { data, error } = await RecetaService.getMejoresRecetas(prompt)
+      if (error) {
+         res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
+         return
+      }
+      if ((data?.mejores.length == 0) && (data?.extra.length == 0)) {
+         res.status(404).json({ response: 'No se pudo encontrar ninguna recomendación para la solicitud. Intenta reformularla' })
+         return
+      }
+
+      res.status(200).json({ data })
       return
    }
 }

@@ -12,6 +12,7 @@ class RecetaRoute {
    public routesConfig() {
       this.ApiRoute.get("/receta/:id", recetaController.getRecetaById)
       this.ApiRoute.get("/listado", recetaController.getResumenRecetas)
+      this.ApiRoute.post("/mejores", recetaController.getMejoresRecetas)
    }
 }
 

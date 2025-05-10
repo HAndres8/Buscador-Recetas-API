@@ -87,7 +87,7 @@ export async function filtroCaracteristicas(prompt: string): Promise<Record<stri
 
 export async function validarPrompt(prompt: string): Promise<boolean> {
    const llm = new ChatGoogleGenerativeAI({
-      model: 'gemini-1.5-flash-8b',
+      model: 'gemini-1.5-flash',
       temperature: 0,
       apiKey: process.env.GEMINI_API_KEY,
    })
