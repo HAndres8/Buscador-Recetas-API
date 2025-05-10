@@ -23,7 +23,7 @@ export interface Receta {
    categorias: CategoriaReceta[]
    ingredientes: IngredienteReceta[]
    pasos: string[]
-   etiqueta_nutricional: string[] | null
+   etiqueta_nutricional: string[]
    imagen_url: string
 }
 

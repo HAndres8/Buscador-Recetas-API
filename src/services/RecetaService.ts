@@ -109,8 +109,9 @@ class RecetaService {
       const estructura = await filtroCaracteristicas(prompt)
       const { porcion, porcionMAX, porcionMIN, duracion, duracionMAX, duracionMIN, tiempo } = estructura.especifico
       const { porcionMAXGen, porcionMINGen, duracionMAXGen, duracionMINGen } = estructura.generico
-      let primerFiltro = false
-      let primerFiltroGenerico = false
+      
+      const primerFiltro = (tiempo?.length > 0) || (porcion != null) || (porcionMAX != null) || (porcionMIN != null) || (duracion != null) || (duracionMAX != null) || (duracionMIN != null)
+      const primerFiltroGenerico = (porcion != null) || (duracion != null)
       
       let queryEspecifica = supabase.from("Receta").select("id, Categoria!inner()") // inner para trabajar directamente con Categoria
       let queryGenerica = supabase.from("Receta").select("id, Categoria!inner()")
@@ -118,10 +119,7 @@ class RecetaService {
       // Si se especifican porciones o duracion puntuales, se tabaja con un rango en la generica por si no hay suficientes
       // recetas recomendadas justo como se solicita. Si se especifican rangos en porciones o duracion, se trabaja solo con
       // esos y no se evaluaria esa caracteristica en la generica
-      if (tiempo?.length > 0) {
-         queryEspecifica = queryEspecifica.in("Categoria.nombre", tiempo)
-         primerFiltro = true
-      }
+      if (tiempo?.length > 0) queryEspecifica = queryEspecifica.in("Categoria.nombre", tiempo)
       
       if (porcion != null) {
          if (tiempo?.length > 0) queryGenerica = queryGenerica.in("Categoria.nombre", tiempo)
@@ -129,17 +127,9 @@ class RecetaService {
          if (porcionMINGen != null) queryGenerica = queryGenerica.gte("porciones", porcionMINGen)
          
          queryEspecifica = queryEspecifica.eq("porciones", porcion)
-         primerFiltro = true
-         primerFiltroGenerico = true
       } else {
-         if (porcionMAX != null) {
-            queryEspecifica = queryEspecifica.lte("porciones", porcionMAX)
-            primerFiltro = true
-         }
-         if (porcionMIN != null) {
-            queryEspecifica = queryEspecifica.gte("porciones", porcionMIN)
-            primerFiltro = true
-         }
+         if (porcionMAX != null) queryEspecifica = queryEspecifica.lte("porciones", porcionMAX)
+         if (porcionMIN != null) queryEspecifica = queryEspecifica.gte("porciones", porcionMIN)
       }
 
       if (duracion != null) {
@@ -148,31 +138,24 @@ class RecetaService {
          if (duracionMINGen != null) queryGenerica = queryGenerica.gte("duracion", duracionMINGen)
          
          queryEspecifica = queryEspecifica.eq("duracion", duracion)
-         primerFiltro = true
-         primerFiltroGenerico = true
       } else {
-         if (duracionMAX != null) {
-            queryEspecifica = queryEspecifica.lte("duracion", duracionMAX)
-            primerFiltro = true
-         }
-         if (duracionMIN != null) {
-            queryEspecifica = queryEspecifica.gte("duracion", duracionMIN)
-            primerFiltro = true
-         }
+         if (duracionMAX != null) queryEspecifica = queryEspecifica.lte("duracion", duracionMAX)
+         if (duracionMIN != null) queryEspecifica = queryEspecifica.gte("duracion", duracionMIN)
       }
 
-      const solicitudUsuario = await embeddingSolicitud(prompt)
-      let idsMejoresRecetas:number[] = []
-      let cantidadRecetas = 0
 
+      const solicitudUsuario = await embeddingSolicitud(prompt)
       if (!solicitudUsuario) {
          return { data: null, error: new Error('No se pudo procesar la solicitud del usuario') }
       }
 
+      let idsMejoresRecetas:number[] = []
+      let cantidadRecetas = 0
+
 
       // * PARA OBTENER LAS MAS RECOMENDADAS *
       // Si se especifican ciertos valores en el prompt, se usa la funcion especifica
-      // Solo revisa las ids que se le pasan
+      // La funcion solo revisa las ids que se le pasan
       if (primerFiltro) {
          const { data, error } = await queryEspecifica
          if (error) {
@@ -217,7 +200,7 @@ class RecetaService {
                   return { data: null, error }
                }
                
-               idsMejoresRecetas = [...idsMejoresRecetas, ...data.map(r => r.id)]
+               idsMejoresRecetas.push(...data.map(r => r.id))
             }
          }
       } else {
@@ -240,8 +223,6 @@ class RecetaService {
       // * PARA OBTENER LA SECCION "Puede interesarte" *
       // No se incluyen las mejores recetas que se encontraron en el primer filtro, la funcion revisa la base de datos
       // excluyendo las que se le pasen
-      let idsRecetasAuxiliares:number[] = []
-
       const { data: auxiliaresData, error: auxiliaresError } = await supabase.rpc('match_recetas_global', {
          'query_embedding': solicitudUsuario,
          'ids_recetas': idsMejoresRecetas,
@@ -252,56 +233,49 @@ class RecetaService {
          return { data: null, error: auxiliaresError }
       }
 
-      idsRecetasAuxiliares = auxiliaresData.map(r => r.id)
+      const idsRecetasAuxiliares = auxiliaresData.map(r => r.id)
 
 
       // * SEGUNDO FILTRO
-      // Obtener la informacion de las mejores para reclasificarla (por eso se trae mas cosas)
-      const { data: mejoresRecetasData, error: errorMejoresRecetas } = await supabase.from("Receta")
-         .select(`id, nombre, pais, duracion, porciones, etiqueta_nutricional, dificultad, imagen_url,
-                  categorias: Categoria(id, nombre, grupo),
-                  ingredientes: IngredienteReceta(ingrediente: Ingrediente(nombre))`)
-         .in("id", idsMejoresRecetas)
+      // [1] Obtener la informacion de las mejores para reclasificarla (por eso se trae mas cosas)
+      // [2] Obtener informacion de las auxiliares
+      const [mejoresRecetas, recetasExtra] = await Promise.all([
+         supabase.from("Receta")
+            .select(`id, nombre, pais, duracion, porciones, etiqueta_nutricional, dificultad, imagen_url,
+                     categorias: Categoria(id, nombre, grupo),
+                     ingredientes: IngredienteReceta(ingrediente: Ingrediente(nombre))`)
+            .in("id", idsMejoresRecetas),
+         supabase.from("Receta")
+            .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
+                     categorias: Categoria(id, nombre, grupo)`)
+            .in("id", idsRecetasAuxiliares)
+      ])
+
+      const { data: mejoresRecetasData, error: errorMejoresRecetas } = mejoresRecetas
+      const { data: recetasExtraData, error: errorRecetasExtra } = recetasExtra
+
       if (errorMejoresRecetas) {
          return { data: null, error: errorMejoresRecetas }
       }
-      
-      // Obtener la informacion de las auxiliares
-      const { data: recetasExtraData, error: errorRecetasExtra } = await supabase.from("Receta")
-         .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
-                  categorias: Categoria(id, nombre, grupo)`)
-         .in("id", idsRecetasAuxiliares)
       if (errorRecetasExtra) {
          return { data: null, error: errorRecetasExtra }
       }
 
       // Diccionario para acceder con mayor facilidad a los datos a la hora de entregar la ultima estructura
-      let mejoresRecetasDict: { [key: number]: any } = {}
-      if (mejoresRecetasData) {
-         mejoresRecetasData.forEach(receta => {
-            mejoresRecetasDict[receta.id] = receta
-         })
-      }
-
-      let recetasAuxiliaresDict: { [key: number]: any } = {}
-      if (recetasExtraData) {
-         recetasExtraData.forEach(receta => {
-            recetasAuxiliaresDict[receta.id] = receta
-         })
-      }
+      const mejoresRecetasDict = Object.fromEntries(mejoresRecetasData.map(receta => [receta.id, receta]))
+      const recetasAuxiliaresDict = Object.fromEntries(recetasExtraData.map(receta => [receta.id, receta]))
 
       // Estructuración del texto para reordenar la recomendacion
-      let mejoresRecetasStr: string[] = []
-      for (const receta of Object.values(mejoresRecetasDict)) {
+      const mejoresRecetasStr = mejoresRecetasData.map(receta => {
          const etiquetas = receta.etiqueta_nutricional.join(', ')
-         const categorias = receta.categorias.map((c:any) => c.nombre).join(', ')
-         const ingredientes = receta.ingredientes.map((i:any) => i.ingrediente.nombre).join(', ')
+         const categorias = receta.categorias.map(c => c.nombre).join(', ')
+         const ingredientes = receta.ingredientes.map(i => i.ingrediente.nombre).join(', ')
 
          const aux = `La receta con ID: ${receta.id}, se llama ${receta.nombre} y es típica de ${receta.pais}. Pertenece a las categorias: ${categorias}. Y usa los ingredientes: ${ingredientes}.
 Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${receta.porciones}, dificultad: ${receta.dificultad} y etiquetas nutricionales como: ${etiquetas}.`
-
-         mejoresRecetasStr.push(aux)
-      }
+         
+         return aux
+      })
 
       if (mejoresRecetasStr.length > 0) {
          idsMejoresRecetas = await analizarRecetas(prompt,mejoresRecetasStr)
@@ -314,38 +288,23 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          extra: []
       }
 
-      idsMejoresRecetas.forEach(id => {
-         const receta = mejoresRecetasDict[id]
-         const aux = {
-            id: receta.id,
-            nombre: receta.nombre,
-            pais: receta.pais,
-            duracion: receta.duracion,
-            porciones: receta.porciones,
-            dificultad: receta.dificultad,
-            imagen_url: receta.imagen_url,
-            categorias: receta.categorias
-         }
-
-         result.mejores.push(aux)
-      })
-      idsRecetasAuxiliares.forEach(id => {
-         const receta = recetasAuxiliaresDict[id]
-         const aux = {
-            id: receta.id,
-            nombre: receta.nombre,
-            pais: receta.pais,
-            duracion: receta.duracion,
-            porciones: receta.porciones,
-            dificultad: receta.dificultad,
-            imagen_url: receta.imagen_url,
-            categorias: receta.categorias
-         }
-
-         result.extra.push(aux)
-      })
+      result.mejores = idsMejoresRecetas.map(id => generarResumen(mejoresRecetasDict[id]))
+      result.extra = idsRecetasAuxiliares.map(id => generarResumen(recetasAuxiliaresDict[id]))
 
       return { data: result, error: null }
+   }
+}
+
+function generarResumen(receta: any): ResumenReceta {
+   return {
+      id: receta.id,
+      nombre: receta.nombre,
+      pais: receta.pais,
+      duracion: receta.duracion,
+      porciones: receta.porciones,
+      dificultad: receta.dificultad,
+      imagen_url: receta.imagen_url,
+      categorias: receta.categorias
    }
 }
 
