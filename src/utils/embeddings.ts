@@ -27,3 +27,24 @@ export async function embeddingReceta(tit: string, cate: string, ingre: string, 
    const embedding = JSON.stringify(result.embeddings[0].values) || null
    return embedding
 }
+
+export async function embeddingSolicitud(prompt: string): Promise<string|null> {
+   const llm = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+   })
+
+   const result = await llm.models.embedContent({
+      model: 'text-embedding-004',
+      contents: prompt,
+      config: {
+         taskType: 'RETRIEVAL_QUERY'
+      }
+   })
+
+   if (!result.embeddings || result.embeddings.length === 0) {
+      throw new Error('No se encontraron embeddings en el resultado')
+   }
+
+   const embedding = JSON.stringify(result.embeddings[0].values) || null
+   return embedding
+}
