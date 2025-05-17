@@ -1,14 +1,16 @@
 import { Request, Response } from "express";
+import { recetaByIdSchema, resumenRecetasSchema, mejoresRecetasSchema } from "../schemas/RecetaSchema";
 import RecetaService from "../services/RecetaService"
 
 class RecetaController {
    public async getRecetaById(req: Request, res: Response) {
-      const id = Number(req.params.id)
-      if (!Number.isInteger(id) || id <= 0) {
-         res.status(400).json({ error: 'El ID de la receta debe ser un número válido' })
+      const result = recetaByIdSchema.safeParse(req.params)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
          return
       }
 
+      const id = result.data.id
       const { data, error } = await RecetaService.getReceta(id);
       if (error) {
          res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
@@ -24,27 +26,14 @@ class RecetaController {
    }
 
    public async getResumenRecetas(req: Request, res: Response) {
-      const { pais, categoria, pag } = req.query
-      const page = Number(pag) || 1
-
-      if (pais && categoria) {
-         res.status(400).json({ error: 'No se puede filtrar por ambos campos' })
-         return
-      }
-      if (pais && typeof pais !== 'string') {
-         res.status(400).json({ error: 'El país debe ser string' })
-         return
-      }
-      if (categoria && typeof categoria !== 'string') {
-         res.status(400).json({ error: 'La categoria debe ser string' })
-         return
-      }
-      if (!Number.isInteger(page) || page <= 0) {
-         res.status(400).json({ error: 'La pagina a buscar debe ser un número válido' })
+      const result = resumenRecetasSchema.safeParse(req.query)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
          return
       }
 
-      const { data, count, error } = await RecetaService.getRecetas(pais ?? null, categoria ?? null, page)
+      const { pais, categoria, pag }= result.data
+      const { data, count, error } = await RecetaService.getRecetas(pais ?? null, categoria ?? null, pag)
       if (error) {
          res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
          return
@@ -59,13 +48,13 @@ class RecetaController {
    }
 
    public async getMejoresRecetas(req: Request, res: Response) {
-      const prompt = req.body.solicitud
-
-      if (typeof prompt !== 'string') {
-         res.status(400).json({ error: 'La solicitud debe ser un string' })
+      const result = mejoresRecetasSchema.safeParse(req.body)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
          return
       }
 
+      const prompt = result.data.solicitud
       const { data, error } = await RecetaService.getMejoresRecetas(prompt)
       if (error) {
          res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
