@@ -1,7 +1,7 @@
 import ConnectionSupabase from "../config/Connection"
-import { Receta, ResumenReceta } from "../types/receta"
+import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
 import { analizarRecetas, filtroCaracteristicas, validarPrompt } from "../utils/modelos"
-import { embeddingSolicitud } from "../utils/embeddings"
+import { embeddingReceta, embeddingSolicitud } from "../utils/embeddings"
 
 class RecetaService {
    private static readonly NIVEL_DE_ACEPTACION = 0.585
@@ -292,6 +292,79 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       result.extra = idsRecetasAuxiliares.map(id => generarResumen(recetasAuxiliaresDict[id]))
 
       return { data: result, error: null }
+   }
+
+   // Agrega una receta a la BD y la relaciona con sus categorias e ingredientes
+   // * Falta el cargado de imagenes desde el front
+   public static async createReceta(body: BodyCrearReceta): Promise<{ mensaje: string|null, error: any }> {
+      const supabase = ConnectionSupabase()
+      let nuevaReceta: CrearReceta = {
+         nombre: body.nombre,
+         pasos: body.pasos,
+         pais: body.pais,
+         duracion: body.duracion,
+         porciones: body.porciones,
+         etiqueta_nutricional: body.etiquetas,
+         dificultad: body.dificultad,
+         imagen_url: body.imagen,
+         embed_receta: ''
+      }
+      const { categorias, ingredientes } = body
+
+      if ((categorias.length == 0) || (ingredientes.length == 0)) {
+         return { mensaje: null, error: new Error('Debes indicar las categorias e ingredientes de la receta') }
+      }
+
+      const { data: existeReceta } = await supabase.from("Receta")
+         .select('id')
+         .eq("nombre", nuevaReceta.nombre)
+         .single()
+      if (existeReceta) {
+         return { mensaje: null, error: new Error('No es posible agregar la receta, ya existe una con el mismo nombre') }
+      }
+
+
+      const nombresCategorias = categorias.map(c => c.nombre).join(', ')
+      const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
+      const embeddingGenerado = await embeddingReceta(nuevaReceta.nombre, nombresCategorias, nombresIngredientes, nuevaReceta.dificultad)
+      if (!embeddingGenerado) {
+         return { mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
+      }
+      nuevaReceta.embed_receta = embeddingGenerado
+      
+      const { data: nuevaRecetaData, error: errorNuevaReceta } = await supabase.from("Receta")
+         .insert(nuevaReceta)
+         .select('id')
+         .single()
+      if (errorNuevaReceta) {
+         return { mensaje: null, error: errorNuevaReceta }
+      }
+
+      
+      const registrosCat = categorias.map(c => ({id_categoria: c.id, id_receta: nuevaRecetaData.id}))
+      const registrosIng = ingredientes.map(i => ({id_ingrediente: i.id, id_receta: nuevaRecetaData.id, cantidad: i.cantidad, especificacion: i.especificacion}))
+      
+      const [dataCategorias, dataIngredientes] = await Promise.all([
+         supabase.from("CategoriaReceta")
+            .insert(registrosCat),
+         supabase.from("IngredienteReceta")
+            .insert(registrosIng)
+      ])
+
+      const { error: errorRelacionCategoria } = dataCategorias
+      const { error: errorRelacionIngrediente } = dataIngredientes
+
+      if (errorRelacionCategoria) {
+         await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
+         return { mensaje: null, error: errorRelacionCategoria }
+      }
+      if (errorRelacionIngrediente) {
+         await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
+         return { mensaje: null, error: errorRelacionIngrediente }
+      }
+
+
+      return { mensaje: 'Receta creada y relacionada correctamente', error: null }
    }
 }
 

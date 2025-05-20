@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { recetaByIdSchema, resumenRecetasSchema, mejoresRecetasSchema } from "../schemas/RecetaSchema";
+import { recetaByIdSchema, resumenRecetasSchema, mejoresRecetasSchema, creacionReceta } from "../schemas/RecetaSchema";
 import RecetaService from "../services/RecetaService"
 
 class RecetaController {
@@ -66,6 +66,24 @@ class RecetaController {
       }
 
       res.status(200).json({ data })
+      return
+   }
+
+   public async createReceta(req: Request, res: Response) {
+      const result = creacionReceta.safeParse(req.body)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
+         return
+      }
+
+      const cuerpo = result.data
+      const { mensaje, error } = await RecetaService.createReceta(cuerpo)
+      if (error) {
+         res.status(500).json({ error: 'Error al realizar la creación', details: error.message })
+         return
+      }
+
+      res.status(200).json({ mensaje })
       return
    }
 }
