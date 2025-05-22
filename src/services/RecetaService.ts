@@ -337,7 +337,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .select('id')
          .single()
       if (errorNuevaReceta) {
-         return { mensaje: null, error: errorNuevaReceta }
+         return { mensaje: 'No fue posible crear la receta', error: errorNuevaReceta }
       }
 
       
@@ -356,11 +356,11 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       if (errorRelacionCategoria) {
          await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { mensaje: null, error: errorRelacionCategoria }
+         return { mensaje: 'Fallo al relacionar las categorias', error: errorRelacionCategoria }
       }
       if (errorRelacionIngrediente) {
          await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { mensaje: null, error: errorRelacionIngrediente }
+         return { mensaje: 'Fallo al relacionar los ingredientes', error: errorRelacionIngrediente }
       }
 
 
@@ -418,7 +418,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .update(miReceta)
          .eq('id', idReceta)
       if (errorActualizar) {
-         return { mensaje: null, error: errorActualizar }
+         return { mensaje: 'No fue posible actualizar la receta', error: errorActualizar }
       }
 
 
@@ -426,7 +426,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       if (cambios.categoria) {
          const res = await relacionesCategorias(categorias, supabase, idReceta)
          if (res.error) {
-            return { mensaje: null, error: res.error }
+            return { mensaje: 'Fallo al relacionar las categorias', error: res.error }
          }
       }
 
@@ -434,7 +434,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       // Siempre eliminar todas las relaciones de la receta y agrega las nuevas que se le pasen
       const res = await relacionesIngredientes(ingredientes, supabase, idReceta)
       if (res.error) {
-         return { mensaje: null, error: res.error }
+         return { mensaje: 'Fallo al relacionar los ingredientes', error: res.error }
       }
 
       return { mensaje: 'Receta actualizada y relacionada correctamente', error: null }

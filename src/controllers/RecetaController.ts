@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import { recetaByIdSchema, resumenRecetasSchema, mejoresRecetasSchema, creacionReceta } from "../schemas/RecetaSchema";
+import { validarIdSchema, resumenRecetasSchema, mejoresRecetasSchema, cuerpoRecetaSchema } from "../schemas/RecetaSchema";
 import RecetaService from "../services/RecetaService"
 
 class RecetaController {
    public async getRecetaById(req: Request, res: Response) {
-      const result = recetaByIdSchema.safeParse(req.params)
+      const result = validarIdSchema.safeParse(req.params)
       if (!result.success) {
          res.status(400).json({ error: result.error.issues[0].message })
          return
@@ -70,7 +70,7 @@ class RecetaController {
    }
 
    public async createReceta(req: Request, res: Response) {
-      const result = creacionReceta.safeParse(req.body)
+      const result = cuerpoRecetaSchema.safeParse(req.body)
       if (!result.success) {
          res.status(400).json({ error: result.error.issues[0].message })
          return
@@ -79,7 +79,7 @@ class RecetaController {
       const cuerpo = result.data
       const { mensaje, error } = await RecetaService.createReceta(cuerpo)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la creación', details: error.message })
+         res.status(500).json({ error: 'Error al realizar la creación', mensaje: mensaje, details: error.message })
          return
       }
 
@@ -88,8 +88,8 @@ class RecetaController {
    }
 
    public async updateReceta(req: Request, res: Response) {
-      const resultBody = creacionReceta.safeParse(req.body)
-      const resultID = recetaByIdSchema.safeParse(req.params)
+      const resultBody = cuerpoRecetaSchema.safeParse(req.body)
+      const resultID = validarIdSchema.safeParse(req.params)
       if (!resultBody.success) {
          res.status(400).json({ error: resultBody.error.issues[0].message })
          return
@@ -103,7 +103,7 @@ class RecetaController {
       const id = resultID.data.id
       const { mensaje, error } = await RecetaService.updateReceta(cuerpo, id)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la actualización', details: error.message })
+         res.status(500).json({ error: 'Error al realizar la actualización', mensaje: mensaje, details: error.message })
          return
       }
 

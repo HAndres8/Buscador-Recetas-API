@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const DIFICULTADES = ['baja','media','alta'] as const
 
-export const recetaByIdSchema = z.object({
+export const validarIdSchema = z.object({
    id: z.coerce.number()
       .int()
       .positive({ message: 'El ID de la receta debe ser un número válido mayor de cero' })
@@ -26,7 +26,7 @@ export const mejoresRecetasSchema = z.object({
       .min(15, { message: 'La solicitud debe ser un poco mas larga' })
 })
 
-export const creacionReceta = z.object({
+export const cuerpoRecetaSchema = z.object({
    nombre: z.string().trim()
       .min(5, { message: 'El nombre debe ser mas largo' }),
    pasos: z.array(z.string().trim()
