@@ -33,7 +33,8 @@ export const creacionReceta = z.object({
       .min(1, { message: 'Cada paso debe tener contenido' })
    ).nonempty({ message: 'Debes especificar los pasos de la receta' }),
    pais: z.string().trim()
-      .length(3, { message: 'El formato del país debe ser de 3 letras' }),
+      .length(3, { message: 'El formato del país debe ser de 3 letras' })
+      .regex(/^[A-Z]{3}$/, { message: 'El país debe estar en mayúsculas' }),
    duracion: z.number()
       .int()
       .gte(5, { message: 'La receta debe durar 5 minutos o más' }),
@@ -56,4 +57,6 @@ export const creacionReceta = z.object({
       cantidad: z.string().trim().min(1),
       especificacion: z.string().trim().min(1).nullable()
    })).nonempty({ message: 'Debes especificar los ingredientes de la receta' })
+}).refine(data => data.imagen.startsWith(data.pais), {
+   message: 'La imagen debe comenzar con el codigo del pais'
 })

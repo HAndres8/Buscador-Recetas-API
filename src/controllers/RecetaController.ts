@@ -86,6 +86,30 @@ class RecetaController {
       res.status(200).json({ mensaje })
       return
    }
+
+   public async updateReceta(req: Request, res: Response) {
+      const resultBody = creacionReceta.safeParse(req.body)
+      const resultID = recetaByIdSchema.safeParse(req.params)
+      if (!resultBody.success) {
+         res.status(400).json({ error: resultBody.error.issues[0].message })
+         return
+      }
+      if (!resultID.success) {
+         res.status(400).json({ error: resultID.error.issues[0].message })
+         return
+      }
+
+      const cuerpo = resultBody.data
+      const id = resultID.data.id
+      const { mensaje, error } = await RecetaService.updateReceta(cuerpo, id)
+      if (error) {
+         res.status(500).json({ error: 'Error al realizar la actualización', details: error.message })
+         return
+      }
+
+      res.status(200).json({ mensaje })
+      return
+   }
 }
 
 const recetaController = new RecetaController()

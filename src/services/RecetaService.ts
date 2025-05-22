@@ -1,5 +1,5 @@
 import ConnectionSupabase from "../config/Connection"
-import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
+import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta, IngredienteReceta } from "../types/receta"
 import { analizarRecetas, filtroCaracteristicas, validarPrompt } from "../utils/modelos"
 import { embeddingReceta, embeddingSolicitud } from "../utils/embeddings"
 
@@ -366,6 +366,79 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       return { mensaje: 'Receta creada y relacionada correctamente', error: null }
    }
+
+   // Actualizar la informacion de una receta
+   // * Falta la actualizacion de imagenes desde el front
+   public static async updateReceta(body: BodyCrearReceta, idReceta: number) {
+      const supabase = ConnectionSupabase()
+      let miReceta: CrearReceta = {
+         nombre: body.nombre,
+         pasos: body.pasos,
+         pais: body.pais,
+         duracion: body.duracion,
+         porciones: body.porciones,
+         etiqueta_nutricional: body.etiquetas,
+         dificultad: body.dificultad,
+         imagen_url: body.imagen,
+         embed_receta: ''
+      }
+      const { categorias, ingredientes } = body
+
+      if ((categorias.length == 0) || (ingredientes.length == 0)) {
+         return { mensaje: null, error: new Error('Debes indicar las categorias e ingredientes de la receta') }
+      }
+
+      const { data: existeReceta } = await supabase.from("Receta")
+         .select(`nombre, dificultad, embed_receta,
+                  categorias: Categoria(id, nombre),
+                  ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre))`)
+         .eq("id", idReceta)
+         .single()
+      if (!existeReceta) {
+         return { mensaje: null, error: new Error('No se encuentra la ID de la receta a actualizar') }
+      }
+
+
+      // Comprobar si los campos claves del embedding fueron cambiados, compara los del body con los de la BD
+      // Si hay cambios se regenera el embedding, y si no se toma el almacenado
+      const cambios = comprobarCambiosEmbedding(miReceta.nombre, miReceta.dificultad, categorias, ingredientes, existeReceta)
+      if (cambios.otro || cambios.categoria || cambios.ingrediente) {
+         const nombresCategorias = categorias.map(c => c.nombre).join(', ')
+         const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
+         const embeddingGenerado = await embeddingReceta(miReceta.nombre, nombresCategorias, nombresIngredientes, miReceta.dificultad)
+         if (!embeddingGenerado) {
+            return { mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
+         }
+         miReceta.embed_receta = embeddingGenerado
+      } else {
+         miReceta.embed_receta = existeReceta.embed_receta
+      }
+
+      const { error: errorActualizar } = await supabase.from("Receta")
+         .update(miReceta)
+         .eq('id', idReceta)
+      if (errorActualizar) {
+         return { mensaje: null, error: errorActualizar }
+      }
+
+
+      // Si cambia las categorias, desrelacionar y relacionar las que se pasen
+      if (cambios.categoria) {
+         const res = await relacionesCategorias(categorias, supabase, idReceta)
+         if (res.error) {
+            return { mensaje: null, error: res.error }
+         }
+      }
+
+      // Esta por fuera porque en los cambios de ingredientes solo se valida el nombre, no las especificaciones
+      // Siempre eliminar todas las relaciones de la receta y agrega las nuevas que se le pasen
+      const res = await relacionesIngredientes(ingredientes, supabase, idReceta)
+      if (res.error) {
+         return { mensaje: null, error: res.error }
+      }
+
+      return { mensaje: 'Receta actualizada y relacionada correctamente', error: null }
+   }
 }
 
 function generarResumen(receta: any): ResumenReceta {
@@ -379,6 +452,65 @@ function generarResumen(receta: any): ResumenReceta {
       imagen_url: receta.imagen_url,
       categorias: receta.categorias
    }
+}
+
+// Se ordenan los arrays para comparar que cada valor sea el correspondiente con el nuevo, si alguno llegase a cambiar
+// el orden ya no seria el mismo, indicando que se cambio alguna categoria o ingrediente
+function comprobarCambiosEmbedding(nombre: string, difi: string, cate: any[], ingre: any[], actual: any): any {
+   const nombreNuevo = nombre
+   const dificultadNueva = difi
+   const nombresCategoriasNuevas = cate.map(c => c.nombre).sort()
+   const nombresIngredientesNuevos = ingre.map(i => i.nombre).sort()
+
+   const nombreViejo = actual.nombre
+   const dificultadVieja = actual.dificultad
+   const nombresCategoriasViejas = actual.categorias.map((c:any) => c.nombre).sort()
+   const nombresIngredientesViejos = actual.ingredientes.map((i:any) => i.ingrediente.nombre).sort()
+
+   let cambios: {otro: boolean, categoria: boolean, ingrediente: boolean} = {
+      otro: false,
+      categoria: false,
+      ingrediente: false
+   }
+   if (nombreNuevo !== nombreViejo) cambios.otro = true
+   if (dificultadNueva !== dificultadVieja) cambios.otro = true
+
+   if ((nombresCategoriasNuevas.length !== nombresCategoriasViejas.length) ||
+      (!nombresCategoriasNuevas.every((val,i) => val === nombresCategoriasViejas[i]))
+   ) cambios.categoria = true
+   if ((nombresIngredientesNuevos.length !== nombresIngredientesViejos.length) ||
+      (!nombresIngredientesNuevos.every((val,i) => val === nombresIngredientesViejos[i]))
+   ) cambios.ingrediente = true
+
+   return cambios
+}
+
+// Elimina todas las relaciones de la receta y agrega las que se pasan nuevas
+async function relacionesCategorias(categoriasNew: any[], supabase: any, idReceta: number): Promise<{ error: any }> {
+   const registrosCat = categoriasNew.map(c => ({id_categoria: c.id, id_receta: idReceta}))
+
+   await supabase.from("CategoriaReceta")
+      .delete()
+      .eq("id_receta", idReceta)
+   
+   const { error } = await supabase.from("CategoriaReceta")
+      .insert(registrosCat)
+   
+   return { error: error }
+}
+
+// Elimina todas las relaciones de la receta y agrega las que se pasan nuevas
+async function relacionesIngredientes(ingredientesNew: IngredienteReceta[], supabase: any, idReceta: number): Promise<{ error: any }> {
+   const registrosIng = ingredientesNew.map(i => ({id_ingrediente: i.id, id_receta: idReceta, cantidad: i.cantidad, especificacion: i.especificacion}))
+
+   await supabase.from("IngredienteReceta")
+      .delete()
+      .eq("id_receta", idReceta)
+   
+   const { error } = await supabase.from("IngredienteReceta")
+      .insert(registrosIng)
+   
+   return { error: error }
 }
 
 export default RecetaService
