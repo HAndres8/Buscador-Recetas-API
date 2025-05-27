@@ -15,7 +15,7 @@ class RecetaService {
 
       // Obtener toda la informacion relacionada a esa receta
       const { data, error } = await supabase.from("Receta")
-         .select(`*,
+         .select(`id, nombre, pais, duracion, porciones, dificultad, pasos, etiqueta_nutricional, imagen_url,
                   categorias: Categoria(id, nombre,grupo),
                   ingredientes: IngredienteReceta(id_ingrediente_receta, ingrediente: Ingrediente(nombre), cantidad, especificacion)`)
          .eq("id", idReceta)
@@ -296,7 +296,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
    // Agrega una receta a la BD y la relaciona con sus categorias e ingredientes
    // * Falta el cargado de imagenes desde el front
-   public static async createReceta(body: BodyCrearReceta): Promise<{ mensaje: string|null, error: any }> {
+   public static async createReceta(body: BodyCrearReceta): Promise<{ idReceta: number|null, mensaje: string|null, error: any }> {
       const supabase = ConnectionSupabase()
       let nuevaReceta: CrearReceta = {
          nombre: body.nombre,
@@ -311,16 +311,12 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       }
       const { categorias, ingredientes } = body
 
-      if ((categorias.length == 0) || (ingredientes.length == 0)) {
-         return { mensaje: null, error: new Error('Debes indicar las categorias e ingredientes de la receta') }
-      }
-
       const { data: existeReceta } = await supabase.from("Receta")
          .select('id')
          .eq("nombre", nuevaReceta.nombre)
          .single()
       if (existeReceta) {
-         return { mensaje: null, error: new Error('No es posible agregar la receta, ya existe una con el mismo nombre') }
+         return { idReceta: null, mensaje: null, error: new Error('No es posible agregar la receta, ya existe una con el mismo nombre') }
       }
 
 
@@ -328,7 +324,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
       const embeddingGenerado = await embeddingReceta(nuevaReceta.nombre, nombresCategorias, nombresIngredientes, nuevaReceta.dificultad)
       if (!embeddingGenerado) {
-         return { mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
+         return { idReceta: null, mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
       }
       nuevaReceta.embed_receta = embeddingGenerado
       
@@ -337,7 +333,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .select('id')
          .single()
       if (errorNuevaReceta) {
-         return { mensaje: 'No fue posible crear la receta', error: errorNuevaReceta }
+         return { idReceta: null, mensaje: 'No fue posible crear la receta', error: errorNuevaReceta }
       }
 
       
@@ -356,20 +352,20 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       if (errorRelacionCategoria) {
          await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { mensaje: 'Fallo al relacionar las categorias', error: errorRelacionCategoria }
+         return { idReceta: null, mensaje: 'Fallo al relacionar las categorias', error: errorRelacionCategoria }
       }
       if (errorRelacionIngrediente) {
          await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { mensaje: 'Fallo al relacionar los ingredientes', error: errorRelacionIngrediente }
+         return { idReceta: null, mensaje: 'Fallo al relacionar los ingredientes', error: errorRelacionIngrediente }
       }
 
 
-      return { mensaje: 'Receta creada y relacionada correctamente', error: null }
+      return { idReceta: nuevaRecetaData.id, mensaje: 'Receta creada y relacionada correctamente', error: null }
    }
 
    // Actualizar la informacion de una receta
    // * Falta la actualizacion de imagenes desde el front
-   public static async updateReceta(body: BodyCrearReceta, idReceta: number) {
+   public static async updateReceta(body: BodyCrearReceta, idReceta: number): Promise<{ mensaje: string|null, error: any }> {
       const supabase = ConnectionSupabase()
       let miReceta: CrearReceta = {
          nombre: body.nombre,
@@ -383,10 +379,6 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          embed_receta: ''
       }
       const { categorias, ingredientes } = body
-
-      if ((categorias.length == 0) || (ingredientes.length == 0)) {
-         return { mensaje: null, error: new Error('Debes indicar las categorias e ingredientes de la receta') }
-      }
 
       const { data: existeReceta } = await supabase.from("Receta")
          .select(`nombre, dificultad, embed_receta,
@@ -438,6 +430,29 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       }
 
       return { mensaje: 'Receta actualizada y relacionada correctamente', error: null }
+   }
+
+   // Eliminar una receta y todas sus relaciones
+   // * Falta la eliminacion de las imagenes
+   public static async deleteReceta(idReceta: number): Promise<{ mensaje: string|null, error: any }> {
+      const supabase = ConnectionSupabase()
+
+      const { error: errorBuscarReceta } = await supabase.from("Receta")
+         .select("id")
+         .eq("id", idReceta)
+         .single()
+      if (errorBuscarReceta) {
+         return { mensaje: 'La receta no existe', error: errorBuscarReceta }
+      }
+
+      const { error: errorEliminarReceta } = await supabase.from("Receta")
+         .delete()
+         .eq("id", idReceta)
+      if (errorEliminarReceta) {
+         return { mensaje: null, error: errorEliminarReceta }
+      }
+      
+      return { mensaje: 'Receta eliminada correctamente', error: null }
    }
 }
 

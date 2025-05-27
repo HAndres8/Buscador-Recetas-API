@@ -15,6 +15,7 @@ class RecetaRoute {
       this.ApiRoute.post("/mejores", recetaController.getMejoresRecetas)
       this.ApiRoute.post("/crear-receta", recetaController.createReceta)
       this.ApiRoute.put("/actualizar-receta/:id", recetaController.updateReceta)
+      this.ApiRoute.delete("/eliminar-receta/:id", recetaController.deleteReceta)
    }
 }
 

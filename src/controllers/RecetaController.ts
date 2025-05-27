@@ -77,13 +77,13 @@ class RecetaController {
       }
 
       const cuerpo = result.data
-      const { mensaje, error } = await RecetaService.createReceta(cuerpo)
+      const { idReceta, mensaje, error } = await RecetaService.createReceta(cuerpo)
       if (error) {
          res.status(500).json({ error: 'Error al realizar la creación', mensaje: mensaje, details: error.message })
          return
       }
 
-      res.status(200).json({ mensaje })
+      res.status(200).json({ id: idReceta, mensaje: mensaje })
       return
    }
 
@@ -107,7 +107,25 @@ class RecetaController {
          return
       }
 
-      res.status(200).json({ mensaje })
+      res.status(200).json({ mensaje: mensaje })
+      return
+   }
+
+   public async deleteReceta(req: Request, res: Response) {
+      const result = validarIdSchema.safeParse(req.params)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
+         return
+      }
+
+      const id = result.data.id
+      const { mensaje, error } = await RecetaService.deleteReceta(id);
+      if (error) {
+         res.status(500).json({ error: 'Error al realizar la eliminación', mensaje: mensaje, details: error.message })
+         return
+      }
+
+      res.status(200).json({ mensaje: mensaje })
       return
    }
 }
