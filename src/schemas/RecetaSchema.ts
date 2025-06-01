@@ -47,16 +47,20 @@ export const cuerpoRecetaSchema = z.object({
    dificultad: z.enum(DIFICULTADES),
    imagen: z.string().trim()
       .endsWith(".jpg", { message: 'Solo imagenes con extensión .jpg se permiten' }),
-   categorias: z.array(z.object({
-      id: z.number().int().positive(),
-      nombre: z.string().trim().min(1)
-   })).nonempty({ message: 'Debes especificar las categorias de la receta' }),
-   ingredientes: z.array(z.object({
-      id: z.number().int().positive(),
-      nombre: z.string().trim().min(1),
-      cantidad: z.string().trim().min(1),
-      especificacion: z.string().trim().min(1).nullable()
-   })).nonempty({ message: 'Debes especificar los ingredientes de la receta' })
+   categorias: z.array(
+      z.object({
+         id: z.number().int().positive(),
+         nombre: z.string().trim().min(1)
+      }).strict()
+   ).nonempty({ message: 'Debes especificar las categorias de la receta' }),
+   ingredientes: z.array(
+      z.object({
+         id: z.number().int().positive(),
+         nombre: z.string().trim().min(1),
+         cantidad: z.string().trim().min(1),
+         especificacion: z.string().trim().min(1).nullable()
+      }).strict()
+   ).nonempty({ message: 'Debes especificar los ingredientes de la receta' })
 }).refine(data => data.imagen.startsWith(data.pais), {
    message: 'La imagen debe comenzar con el codigo del pais'
 })

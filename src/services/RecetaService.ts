@@ -17,14 +17,14 @@ class RecetaService {
       const { data, error } = await supabase.from("Receta")
          .select(`id, nombre, pais, duracion, porciones, dificultad, pasos, etiqueta_nutricional, imagen_url,
                   categorias: Categoria(id, nombre,grupo),
-                  ingredientes: IngredienteReceta(id_ingrediente_receta, ingrediente: Ingrediente(nombre), cantidad, especificacion)`)
+                  ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre), cantidad, especificacion)`)
          .eq("id", idReceta)
          .single()
       
       if (data) {
          // Extraer el nombre del ingrediente fuera del objeto
          const ingredientesFinal = data.ingredientes.map((ingre) => ({
-            id: ingre.id_ingrediente_receta,
+            id: ingre.ingrediente.id,
             nombre: ingre.ingrediente.nombre,
             cantidad: ingre.cantidad,
             especificacion: ingre.especificacion,
@@ -328,39 +328,26 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       }
       nuevaReceta.embed_receta = embeddingGenerado
       
-      const { data: nuevaRecetaData, error: errorNuevaReceta } = await supabase.from("Receta")
-         .insert(nuevaReceta)
-         .select('id')
-         .single()
-      if (errorNuevaReceta) {
-         return { idReceta: null, mensaje: 'No fue posible crear la receta', error: errorNuevaReceta }
+
+      // Despues de aqui se llama a la funcion que maneja insercion y relaciones en un solo llamado
+      const { data: idNuevaReceta, error: errorAgregar } = await supabase.rpc('agregar_recetas_con_relaciones', {
+         p_nombre: nuevaReceta.nombre,
+         p_pasos: nuevaReceta.pasos,
+         p_pais: nuevaReceta.pais,
+         p_duracion: nuevaReceta.duracion,
+         p_porciones: nuevaReceta.porciones,
+         p_etiquetas: nuevaReceta.etiqueta_nutricional,
+         p_dificultad: nuevaReceta.dificultad,
+         p_imagen: nuevaReceta.imagen_url,
+         p_embedding: nuevaReceta.embed_receta,
+         p_categorias: categorias,
+         p_ingredientes: JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
+      })
+      if (errorAgregar) {
+         return { idReceta: null, mensaje: 'No fue posible crear la receta', error: errorAgregar }
       }
 
-      
-      const registrosCat = categorias.map(c => ({id_categoria: c.id, id_receta: nuevaRecetaData.id}))
-      const registrosIng = ingredientes.map(i => ({id_ingrediente: i.id, id_receta: nuevaRecetaData.id, cantidad: i.cantidad, especificacion: i.especificacion}))
-      
-      const [dataCategorias, dataIngredientes] = await Promise.all([
-         supabase.from("CategoriaReceta")
-            .insert(registrosCat),
-         supabase.from("IngredienteReceta")
-            .insert(registrosIng)
-      ])
-
-      const { error: errorRelacionCategoria } = dataCategorias
-      const { error: errorRelacionIngrediente } = dataIngredientes
-
-      if (errorRelacionCategoria) {
-         await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { idReceta: null, mensaje: 'Fallo al relacionar las categorias', error: errorRelacionCategoria }
-      }
-      if (errorRelacionIngrediente) {
-         await supabase.from("Receta").delete().eq("id", nuevaRecetaData.id)
-         return { idReceta: null, mensaje: 'Fallo al relacionar los ingredientes', error: errorRelacionIngrediente }
-      }
-
-
-      return { idReceta: nuevaRecetaData.id, mensaje: 'Receta creada y relacionada correctamente', error: null }
+      return { idReceta: idNuevaReceta, mensaje: 'Receta creada y relacionada correctamente', error: null }
    }
 
    // Actualizar la informacion de una receta
@@ -406,27 +393,24 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          miReceta.embed_receta = existeReceta.embed_receta
       }
 
-      const { error: errorActualizar } = await supabase.from("Receta")
-         .update(miReceta)
-         .eq('id', idReceta)
+
+      // Despues de aqui se llama a la funcion que maneja actualizacion y relaciones en un solo llamado
+      const { error: errorActualizar } = await supabase.rpc('actualizar_recetas_con_relaciones', {
+         p_id: idReceta,
+         p_nombre: miReceta.nombre,
+         p_pasos: miReceta.pasos,
+         p_pais: miReceta.pais,
+         p_duracion: miReceta.duracion,
+         p_porciones: miReceta.porciones,
+         p_etiquetas: miReceta.etiqueta_nutricional,
+         p_dificultad: miReceta.dificultad,
+         p_imagen: miReceta.imagen_url,
+         p_embedding: miReceta.embed_receta ?? '',
+         p_categorias: categorias,
+         p_ingredientes: JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
+      })
       if (errorActualizar) {
          return { mensaje: 'No fue posible actualizar la receta', error: errorActualizar }
-      }
-
-
-      // Si cambia las categorias, desrelacionar y relacionar las que se pasen
-      if (cambios.categoria) {
-         const res = await relacionesCategorias(categorias, supabase, idReceta)
-         if (res.error) {
-            return { mensaje: 'Fallo al relacionar las categorias', error: res.error }
-         }
-      }
-
-      // Esta por fuera porque en los cambios de ingredientes solo se valida el nombre, no las especificaciones
-      // Siempre eliminar todas las relaciones de la receta y agrega las nuevas que se le pasen
-      const res = await relacionesIngredientes(ingredientes, supabase, idReceta)
-      if (res.error) {
-         return { mensaje: 'Fallo al relacionar los ingredientes', error: res.error }
       }
 
       return { mensaje: 'Receta actualizada y relacionada correctamente', error: null }
@@ -498,34 +482,6 @@ function comprobarCambiosEmbedding(nombre: string, difi: string, cate: any[], in
    ) cambios.ingrediente = true
 
    return cambios
-}
-
-// Elimina todas las relaciones de la receta y agrega las que se pasan nuevas
-async function relacionesCategorias(categoriasNew: any[], supabase: any, idReceta: number): Promise<{ error: any }> {
-   const registrosCat = categoriasNew.map(c => ({id_categoria: c.id, id_receta: idReceta}))
-
-   await supabase.from("CategoriaReceta")
-      .delete()
-      .eq("id_receta", idReceta)
-   
-   const { error } = await supabase.from("CategoriaReceta")
-      .insert(registrosCat)
-   
-   return { error: error }
-}
-
-// Elimina todas las relaciones de la receta y agrega las que se pasan nuevas
-async function relacionesIngredientes(ingredientesNew: IngredienteReceta[], supabase: any, idReceta: number): Promise<{ error: any }> {
-   const registrosIng = ingredientesNew.map(i => ({id_ingrediente: i.id, id_receta: idReceta, cantidad: i.cantidad, especificacion: i.especificacion}))
-
-   await supabase.from("IngredienteReceta")
-      .delete()
-      .eq("id_receta", idReceta)
-   
-   const { error } = await supabase.from("IngredienteReceta")
-      .insert(registrosIng)
-   
-   return { error: error }
 }
 
 export default RecetaService

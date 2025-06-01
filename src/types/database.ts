@@ -201,6 +201,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actualizar_recetas_con_relaciones: {
+        Args: {
+          p_id: number
+          p_nombre: string
+          p_pasos: string[]
+          p_pais: string
+          p_duracion: number
+          p_porciones: number
+          p_etiquetas: string[]
+          p_dificultad: string
+          p_imagen: string
+          p_embedding: string
+          p_categorias: Json
+          p_ingredientes: Json
+        }
+        Returns: undefined
+      }
+      agregar_recetas_con_relaciones: {
+        Args: {
+          p_nombre: string
+          p_pasos: string[]
+          p_pais: string
+          p_duracion: number
+          p_porciones: number
+          p_etiquetas: string[]
+          p_dificultad: string
+          p_imagen: string
+          p_embedding: string
+          p_categorias: Json
+          p_ingredientes: Json
+        }
+        Returns: number
+      }
       match_recetas_especificas: {
         Args: {
           query_embedding: string
