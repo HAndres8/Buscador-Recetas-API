@@ -1,5 +1,5 @@
 import ConnectionSupabase from "../config/Connection"
-import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta, IngredienteReceta } from "../types/receta"
+import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
 import { analizarRecetas, filtroCaracteristicas, validarPrompt } from "../utils/modelos"
 import { embeddingReceta, embeddingSolicitud } from "../utils/embeddings"
 
@@ -14,11 +14,11 @@ class RecetaService {
       const supabase = ConnectionSupabase()
 
       // Obtener toda la informacion relacionada a esa receta
-      const { data, error } = await supabase.from("Receta")
+      const { data, error } = await supabase.from('Receta')
          .select(`id, nombre, pais, duracion, porciones, dificultad, pasos, etiqueta_nutricional, imagen_url,
                   categorias: Categoria(id, nombre,grupo),
                   ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre), cantidad, especificacion)`)
-         .eq("id", idReceta)
+         .eq('id', idReceta)
          .single()
       
       if (data) {
@@ -48,12 +48,12 @@ class RecetaService {
 
       // Buscar recetas de ese país en especifico
       if (pais) {
-         const { data, count, error } = await supabase.from("Receta")
+         const { data, count, error } = await supabase.from('Receta')
             .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
                      categorias: Categoria(id, nombre, grupo)`,
-                     { count: "exact" })
-            .eq("pais", pais)
-            .order("nombre", { ascending: true })
+                     { count: 'exact' })
+            .eq('pais', pais)
+            .order('nombre', { ascending: true })
             .range(desde,hasta)
 
          return { data, count: count ?? 0, error }
@@ -61,35 +61,35 @@ class RecetaService {
       // Buscar recetas de esa categoria en especifico
       if (categoria) {
          // Obtener las recetas que pertenecen a esa categoria
-         const { data: categoriaData, error: errorCategoria } = await supabase.from("Categoria")
-            .select("Receta(id)")
-            .eq("nombre", categoria)
+         const { data: categoriaData, error: errorCategoria } = await supabase.from('Categoria')
+            .select('Receta(id)')
+            .eq('nombre', categoria)
             .single()
          
          if (errorCategoria) {
             return { data: categoriaData, count: 0, error: errorCategoria }
          }
          
-         const recetasIDs = categoriaData?.Receta.map(receta => receta.id) || []
+         const recetasIDs = categoriaData.Receta.map(receta => receta.id)
 
          // Buscar las recetas segun los IDs obtenidos anteriormente
-         const { data: recetasData, count, error: errorReceta } = await supabase.from("Receta")
+         const { data: recetasData, count, error: errorReceta } = await supabase.from('Receta')
             .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
                      categorias: Categoria(id, nombre, grupo)`,
-                     { count: "exact" })
-            .in("id", recetasIDs)
-            .order("nombre", { ascending: true })
+                     { count: 'exact' })
+            .in('id', recetasIDs)
+            .order('nombre', { ascending: true })
             .range(desde,hasta)
 
          return { data: recetasData, count: count ?? 0, error: errorReceta }
       }
 
       // Si no se especifica ninguna, se devuelven en general
-      const { data, count, error } = await supabase.from("Receta")
+      const { data, count, error } = await supabase.from('Receta')
          .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
                   categorias: Categoria(id, nombre, grupo)`,
-                  { count: "exact" })
-         .order("nombre", { ascending: true })
+                  { count: 'exact' })
+         .order('nombre', { ascending: true })
          .range(desde,hasta)
       
       return { data, count: count ?? 0, error }
@@ -113,34 +113,34 @@ class RecetaService {
       const primerFiltro = (tiempo?.length > 0) || (porcion != null) || (porcionMAX != null) || (porcionMIN != null) || (duracion != null) || (duracionMAX != null) || (duracionMIN != null)
       const primerFiltroGenerico = (porcion != null) || (duracion != null)
       
-      let queryEspecifica = supabase.from("Receta").select("id, Categoria!inner()") // inner para trabajar directamente con Categoria
-      let queryGenerica = supabase.from("Receta").select("id, Categoria!inner()")
+      let queryEspecifica = supabase.from('Receta').select('id, Categoria!inner()')       // inner para trabajar directamente con Categoria
+      let queryGenerica = supabase.from('Receta').select('id, Categoria!inner()')
       
       // Si se especifican porciones o duracion puntuales, se tabaja con un rango en la generica por si no hay suficientes
       // recetas recomendadas justo como se solicita. Si se especifican rangos en porciones o duracion, se trabaja solo con
       // esos y no se evaluaria esa caracteristica en la generica
-      if (tiempo?.length > 0) queryEspecifica = queryEspecifica.in("Categoria.nombre", tiempo)
+      if (tiempo?.length > 0) queryEspecifica = queryEspecifica.in('Categoria.nombre', tiempo)
       
       if (porcion != null) {
-         if (tiempo?.length > 0) queryGenerica = queryGenerica.in("Categoria.nombre", tiempo)
-         if (porcionMAXGen != null) queryGenerica = queryGenerica.lte("porciones", porcionMAXGen)
-         if (porcionMINGen != null) queryGenerica = queryGenerica.gte("porciones", porcionMINGen)
+         if (tiempo?.length > 0) queryGenerica = queryGenerica.in('Categoria.nombre', tiempo)
+         if (porcionMAXGen != null) queryGenerica = queryGenerica.lte('porciones', porcionMAXGen)
+         if (porcionMINGen != null) queryGenerica = queryGenerica.gte('porciones', porcionMINGen)
          
-         queryEspecifica = queryEspecifica.eq("porciones", porcion)
+         queryEspecifica = queryEspecifica.eq('porciones', porcion)
       } else {
-         if (porcionMAX != null) queryEspecifica = queryEspecifica.lte("porciones", porcionMAX)
-         if (porcionMIN != null) queryEspecifica = queryEspecifica.gte("porciones", porcionMIN)
+         if (porcionMAX != null) queryEspecifica = queryEspecifica.lte('porciones', porcionMAX)
+         if (porcionMIN != null) queryEspecifica = queryEspecifica.gte('porciones', porcionMIN)
       }
 
       if (duracion != null) {
-         if (tiempo?.length > 0) queryGenerica = queryGenerica.in("Categoria.nombre", tiempo)
-         if (duracionMAXGen != null) queryGenerica = queryGenerica.lte("duracion", duracionMAXGen)
-         if (duracionMINGen != null) queryGenerica = queryGenerica.gte("duracion", duracionMINGen)
+         if (tiempo?.length > 0) queryGenerica = queryGenerica.in('Categoria.nombre', tiempo)
+         if (duracionMAXGen != null) queryGenerica = queryGenerica.lte('duracion', duracionMAXGen)
+         if (duracionMINGen != null) queryGenerica = queryGenerica.gte('duracion', duracionMINGen)
          
-         queryEspecifica = queryEspecifica.eq("duracion", duracion)
+         queryEspecifica = queryEspecifica.eq('duracion', duracion)
       } else {
-         if (duracionMAX != null) queryEspecifica = queryEspecifica.lte("duracion", duracionMAX)
-         if (duracionMIN != null) queryEspecifica = queryEspecifica.gte("duracion", duracionMIN)
+         if (duracionMAX != null) queryEspecifica = queryEspecifica.lte('duracion', duracionMAX)
+         if (duracionMIN != null) queryEspecifica = queryEspecifica.gte('duracion', duracionMIN)
       }
 
 
@@ -240,15 +240,15 @@ class RecetaService {
       // [1] Obtener la informacion de las mejores para reclasificarla (por eso se trae mas cosas)
       // [2] Obtener informacion de las auxiliares
       const [mejoresRecetas, recetasExtra] = await Promise.all([
-         supabase.from("Receta")
+         supabase.from('Receta')
             .select(`id, nombre, pais, duracion, porciones, etiqueta_nutricional, dificultad, imagen_url,
                      categorias: Categoria(id, nombre, grupo),
                      ingredientes: IngredienteReceta(ingrediente: Ingrediente(nombre))`)
-            .in("id", idsMejoresRecetas),
-         supabase.from("Receta")
+            .in('id', idsMejoresRecetas),
+         supabase.from('Receta')
             .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
                      categorias: Categoria(id, nombre, grupo)`)
-            .in("id", idsRecetasAuxiliares)
+            .in('id', idsRecetasAuxiliares)
       ])
 
       const { data: mejoresRecetasData, error: errorMejoresRecetas } = mejoresRecetas
@@ -311,9 +311,9 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       }
       const { categorias, ingredientes } = body
 
-      const { data: existeReceta } = await supabase.from("Receta")
+      const { data: existeReceta } = await supabase.from('Receta')
          .select('id')
-         .eq("nombre", nuevaReceta.nombre)
+         .eq('nombre', nuevaReceta.nombre)
          .single()
       if (existeReceta) {
          return { idReceta: null, mensaje: null, error: new Error('No es posible agregar la receta, ya existe una con el mismo nombre') }
@@ -331,17 +331,17 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       // Despues de aqui se llama a la funcion que maneja insercion y relaciones en un solo llamado
       const { data: idNuevaReceta, error: errorAgregar } = await supabase.rpc('agregar_recetas_con_relaciones', {
-         p_nombre: nuevaReceta.nombre,
-         p_pasos: nuevaReceta.pasos,
-         p_pais: nuevaReceta.pais,
-         p_duracion: nuevaReceta.duracion,
-         p_porciones: nuevaReceta.porciones,
-         p_etiquetas: nuevaReceta.etiqueta_nutricional,
-         p_dificultad: nuevaReceta.dificultad,
-         p_imagen: nuevaReceta.imagen_url,
-         p_embedding: nuevaReceta.embed_receta,
-         p_categorias: categorias,
-         p_ingredientes: JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
+         'p_nombre': nuevaReceta.nombre,
+         'p_pasos': nuevaReceta.pasos,
+         'p_pais': nuevaReceta.pais,
+         'p_duracion': nuevaReceta.duracion,
+         'p_porciones': nuevaReceta.porciones,
+         'p_etiquetas': nuevaReceta.etiqueta_nutricional,
+         'p_dificultad': nuevaReceta.dificultad,
+         'p_imagen': nuevaReceta.imagen_url,
+         'p_embedding': nuevaReceta.embed_receta,
+         'p_categorias': categorias,
+         'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
       if (errorAgregar) {
          return { idReceta: null, mensaje: 'No fue posible crear la receta', error: errorAgregar }
@@ -367,11 +367,11 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       }
       const { categorias, ingredientes } = body
 
-      const { data: existeReceta } = await supabase.from("Receta")
+      const { data: existeReceta } = await supabase.from('Receta')
          .select(`nombre, dificultad, embed_receta,
                   categorias: Categoria(id, nombre),
                   ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre))`)
-         .eq("id", idReceta)
+         .eq('id', idReceta)
          .single()
       if (!existeReceta) {
          return { mensaje: null, error: new Error('No se encuentra la ID de la receta a actualizar') }
@@ -396,18 +396,18 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       // Despues de aqui se llama a la funcion que maneja actualizacion y relaciones en un solo llamado
       const { error: errorActualizar } = await supabase.rpc('actualizar_recetas_con_relaciones', {
-         p_id: idReceta,
-         p_nombre: miReceta.nombre,
-         p_pasos: miReceta.pasos,
-         p_pais: miReceta.pais,
-         p_duracion: miReceta.duracion,
-         p_porciones: miReceta.porciones,
-         p_etiquetas: miReceta.etiqueta_nutricional,
-         p_dificultad: miReceta.dificultad,
-         p_imagen: miReceta.imagen_url,
-         p_embedding: miReceta.embed_receta ?? '',
-         p_categorias: categorias,
-         p_ingredientes: JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
+         'p_id': idReceta,
+         'p_nombre': miReceta.nombre,
+         'p_pasos': miReceta.pasos,
+         'p_pais': miReceta.pais,
+         'p_duracion': miReceta.duracion,
+         'p_porciones': miReceta.porciones,
+         'p_etiquetas': miReceta.etiqueta_nutricional,
+         'p_dificultad': miReceta.dificultad,
+         'p_imagen': miReceta.imagen_url,
+         'p_embedding': miReceta.embed_receta ?? '',
+         'p_categorias': categorias,
+         'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
       if (errorActualizar) {
          return { mensaje: 'No fue posible actualizar la receta', error: errorActualizar }
@@ -421,17 +421,17 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
    public static async deleteReceta(idReceta: number): Promise<{ mensaje: string|null, error: any }> {
       const supabase = ConnectionSupabase()
 
-      const { error: errorBuscarReceta } = await supabase.from("Receta")
-         .select("id")
-         .eq("id", idReceta)
+      const { error: errorBuscarReceta } = await supabase.from('Receta')
+         .select('id')
+         .eq('id', idReceta)
          .single()
       if (errorBuscarReceta) {
          return { mensaje: 'La receta no existe', error: errorBuscarReceta }
       }
 
-      const { error: errorEliminarReceta } = await supabase.from("Receta")
+      const { error: errorEliminarReceta } = await supabase.from('Receta')
          .delete()
-         .eq("id", idReceta)
+         .eq('id', idReceta)
       if (errorEliminarReceta) {
          return { mensaje: null, error: errorEliminarReceta }
       }

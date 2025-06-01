@@ -10,7 +10,7 @@ class Server {
    public app: Express
    
    constructor() {
-      dotenv.config({ path: ".env" })
+      dotenv.config({ path: '.env' })
       ConnectionSupabase()
       this.app = express()
       this.startConf()
@@ -18,20 +18,20 @@ class Server {
    }
 
    public startConf() {
-      this.app.set("PORT", process.env.PORT || 3000)
+      this.app.set('PORT', process.env.PORT || 3000)
       this.app.use(cors())
-      this.app.use(morgan("dev"))
-      this.app.use(express.json({ limit: "50MB" }))
+      this.app.use(morgan('dev'))
+      this.app.use(express.json({ limit: '50MB' }))
       this.app.use(express.urlencoded({ extended: true }))
    }
 
    public startRoutes() {
-      this.app.use("/api/recetas", RecetaRoute)
+      this.app.use('/api/recetas', RecetaRoute)
    }
 
    public startServer() {
-      this.app.listen(this.app.get("PORT"), () => {
-         console.log('Backend listo en el puerto', this.app.get("PORT"))
+      this.app.listen(this.app.get('PORT'), () => {
+         console.log('Backend listo en el puerto', this.app.get('PORT'))
       })
    }
 }

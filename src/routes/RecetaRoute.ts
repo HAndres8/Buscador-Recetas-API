@@ -10,12 +10,12 @@ class RecetaRoute {
    }
 
    public routesConfig() {
-      this.ApiRoute.get("/receta/:id", recetaController.getRecetaById)
-      this.ApiRoute.get("/listado", recetaController.getResumenRecetas)
-      this.ApiRoute.post("/mejores", recetaController.getMejoresRecetas)
-      this.ApiRoute.post("/crear-receta", recetaController.createReceta)
-      this.ApiRoute.put("/actualizar-receta/:id", recetaController.updateReceta)
-      this.ApiRoute.delete("/eliminar-receta/:id", recetaController.deleteReceta)
+      this.ApiRoute.get('/receta/:id', recetaController.getRecetaById)
+      this.ApiRoute.get('/listado', recetaController.getResumenRecetas)
+      this.ApiRoute.post('/mejores', recetaController.getMejoresRecetas)
+      this.ApiRoute.post('/crear-receta', recetaController.createReceta)
+      this.ApiRoute.put('/actualizar-receta/:id', recetaController.updateReceta)
+      this.ApiRoute.delete('/eliminar-receta/:id', recetaController.deleteReceta)
    }
 }
 

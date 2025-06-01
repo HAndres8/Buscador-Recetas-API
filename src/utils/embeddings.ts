@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI } from "@google/genai"
 
 export async function embeddingReceta(tit: string, cate: string, ingre: string, difi: 'baja'|'media'|'alta'): Promise<string|null> {
    const llm = new GoogleGenAI({

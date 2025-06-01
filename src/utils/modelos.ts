@@ -1,6 +1,6 @@
-import { JsonOutputParser, StringOutputParser } from '@langchain/core/output_parsers'
-import { ChatPromptTemplate } from '@langchain/core/prompts'
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
+import { JsonOutputParser, StringOutputParser } from "@langchain/core/output_parsers"
+import { ChatPromptTemplate } from "@langchain/core/prompts"
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
 
 export async function filtroCaracteristicas(prompt: string): Promise<Record<string, any>> {
    const llm = new ChatGoogleGenerativeAI({
