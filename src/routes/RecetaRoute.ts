@@ -1,5 +1,6 @@
 import { Router } from "express"
 import recetaController from "../controllers/RecetaController"
+import { autenticarToken, autorizarToken } from "../middlewares/authMiddleware"
 
 class RecetaRoute {
    public ApiRoute: Router
@@ -13,9 +14,9 @@ class RecetaRoute {
       this.ApiRoute.get('/receta/:id', recetaController.getRecetaById)
       this.ApiRoute.get('/listado', recetaController.getResumenRecetas)
       this.ApiRoute.post('/mejores', recetaController.getMejoresRecetas)
-      this.ApiRoute.post('/crear-receta', recetaController.createReceta)
-      this.ApiRoute.put('/actualizar-receta/:id', recetaController.updateReceta)
-      this.ApiRoute.delete('/eliminar-receta/:id', recetaController.deleteReceta)
+      this.ApiRoute.post('/crear-receta', autenticarToken, autorizarToken, recetaController.createReceta)
+      this.ApiRoute.put('/actualizar-receta/:id', autenticarToken, autorizarToken, recetaController.updateReceta)
+      this.ApiRoute.delete('/eliminar-receta/:id', autenticarToken, autorizarToken, recetaController.deleteReceta)
    }
 }
 

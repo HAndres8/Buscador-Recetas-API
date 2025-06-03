@@ -440,6 +440,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
    }
 }
 
+
 function generarResumen(receta: any): ResumenReceta {
    return {
       id: receta.id,

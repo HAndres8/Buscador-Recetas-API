@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt"
-import ConnectionSupabase from "../config/Connection";
-import { generarAccessToken, generarRefreshToken } from "../utils/auth";
-import { CuerpoToken } from "../types/usuario";
+import ConnectionSupabase from "../config/Connection"
+import { generarAccessToken, generarRefreshToken } from "../utils/auth"
+import { CuerpoToken } from "../types/usuario"
 
 class UsuarioService {
    
@@ -35,7 +35,7 @@ class UsuarioService {
    }
 
    // Verifica la identidad del usuario y entrega tokens
-   public static async login(mail: string, password: string): Promise<{ user?: CuerpoToken, accessToken?: string, refreshToken?: string, error?: any }> {
+   public static async login(mail: string, password: string): Promise<{ accessToken?: string, refreshToken?: string, error?: any }> {
       const supabase = ConnectionSupabase()
       
       const { data: existeUsuario } = await supabase.from('Usuario')
@@ -61,7 +61,7 @@ class UsuarioService {
       const accessToken = generarAccessToken(payload)
       const refreshToken = generarRefreshToken(payload)
 
-      return { user: payload, accessToken, refreshToken }
+      return { accessToken, refreshToken }
    }
 }
 
