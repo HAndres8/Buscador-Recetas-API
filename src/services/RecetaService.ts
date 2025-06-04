@@ -65,7 +65,6 @@ class RecetaService {
             .select('Receta(id)')
             .eq('nombre', categoria)
             .single()
-         
          if (errorCategoria) {
             return { data: categoriaData, count: 0, error: errorCategoria }
          }
@@ -381,7 +380,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       // Comprobar si los campos claves del embedding fueron cambiados, compara los del body con los de la BD
       // Si hay cambios se regenera el embedding, y si no se toma el almacenado
       const cambios = comprobarCambiosEmbedding(miReceta.nombre, miReceta.dificultad, categorias, ingredientes, existeReceta)
-      if (cambios.otro || cambios.categoria || cambios.ingrediente) {
+      if (cambios) {
          const nombresCategorias = categorias.map(c => c.nombre).join(', ')
          const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
          const embeddingGenerado = await embeddingReceta(miReceta.nombre, nombresCategorias, nombresIngredientes, miReceta.dificultad)
@@ -456,7 +455,7 @@ function generarResumen(receta: any): ResumenReceta {
 
 // Se ordenan los arrays para comparar que cada valor sea el correspondiente con el nuevo, si alguno llegase a cambiar
 // el orden ya no seria el mismo, indicando que se cambio alguna categoria o ingrediente
-function comprobarCambiosEmbedding(nombre: string, difi: string, cate: any[], ingre: any[], actual: any): any {
+function comprobarCambiosEmbedding(nombre: string, difi: string, cate: any[], ingre: any[], actual: any): boolean {
    const nombreNuevo = nombre
    const dificultadNueva = difi
    const nombresCategoriasNuevas = cate.map(c => c.nombre).sort()
@@ -467,20 +466,16 @@ function comprobarCambiosEmbedding(nombre: string, difi: string, cate: any[], in
    const nombresCategoriasViejas = actual.categorias.map((c:any) => c.nombre).sort()
    const nombresIngredientesViejos = actual.ingredientes.map((i:any) => i.ingrediente.nombre).sort()
 
-   let cambios: {otro: boolean, categoria: boolean, ingrediente: boolean} = {
-      otro: false,
-      categoria: false,
-      ingrediente: false
-   }
-   if (nombreNuevo !== nombreViejo) cambios.otro = true
-   if (dificultadNueva !== dificultadVieja) cambios.otro = true
+   let cambios = false
+   if (nombreNuevo !== nombreViejo) cambios = true
+   if (dificultadNueva !== dificultadVieja) cambios = true
 
    if ((nombresCategoriasNuevas.length !== nombresCategoriasViejas.length) ||
       (!nombresCategoriasNuevas.every((val,i) => val === nombresCategoriasViejas[i]))
-   ) cambios.categoria = true
+   ) cambios = true
    if ((nombresIngredientesNuevos.length !== nombresIngredientesViejos.length) ||
       (!nombresIngredientesNuevos.every((val,i) => val === nombresIngredientesViejos[i]))
-   ) cambios.ingrediente = true
+   ) cambios = true
 
    return cambios
 }

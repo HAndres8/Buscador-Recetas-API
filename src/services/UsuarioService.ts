@@ -17,9 +17,7 @@ class UsuarioService {
          return { mensaje: null, error: new Error('No es posible registrar el correo del usuario') }
       }
 
-
       const nuevaPassword = await bcrypt.hash(password, Number(process.env.SALTOS!))
-
 
       const { error } = await supabase.from('Usuario')
          .insert({
@@ -51,7 +49,6 @@ class UsuarioService {
       if (!valida) {
          return { error: new Error('Usuario o contraseña incorrectos') }
       }
-
 
       const payload: CuerpoToken = {
          id: existeUsuario.id,

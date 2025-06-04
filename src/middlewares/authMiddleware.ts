@@ -1,18 +1,21 @@
 import { Request, Response, NextFunction } from "express"
 import { generarAccessToken, generarRefreshToken, verificarAccessToken, verificarRefreshToken } from "../utils/auth"
-import { COOKIE_OPTIONS, CuerpoToken } from "types/usuario"
+import { COOKIE_OPTIONS, CuerpoToken } from "../types/usuario"
 
 export const autenticarToken = (req: Request, res: Response, next: NextFunction) => {
    const refreshToken: string = req.cookies.refreshToken
    const accessToken: string = req.cookies.accessToken
 
    if (!refreshToken && !accessToken) {
-      res.status(400).json({ mensaje: 'Acceso denegado. Vuelve a iniciar sesión' })
+      res.status(401).json({ mensaje: 'Acceso denegado. Vuelve a iniciar sesión' })
       return
    }
    if (!accessToken) {
       const user = regenerarAccessToken(res, refreshToken)
-      if (!user) return
+      if (!user) {
+         res.status(401).json({ mensaje: 'Token inválido o expirado' })
+         return
+      } 
       
       req.user = { id: user.id, rol: user.rol }
       return next()
@@ -56,7 +59,6 @@ function regenerarAccessToken(res: Response, refreshToken: string) {
 
       return { id: decoded.id, rol: decoded.rol }
    } catch (error) {
-      res.status(401).json({ mensaje: 'Token inválido o expirado' })
-      return
+      return null
    }
 }

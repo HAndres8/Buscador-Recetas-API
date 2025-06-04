@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import { validarIdSchema, resumenRecetasSchema, mejoresRecetasSchema, cuerpoRecetaSchema } from "../schemas/RecetaSchema";
+import { Request, Response } from "express"
+import { validarIdSchema, resumenRecetasSchema, mejoresRecetasSchema, cuerpoRecetaSchema } from "../schemas/RecetaSchema"
 import RecetaService from "../services/RecetaService"
 
 class RecetaController {
@@ -11,7 +11,7 @@ class RecetaController {
       }
 
       const id = result.data.id
-      const { data, error } = await RecetaService.getReceta(id);
+      const { data, error } = await RecetaService.getReceta(id)
       if (error) {
          res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
          return
@@ -83,7 +83,7 @@ class RecetaController {
          return
       }
 
-      res.status(200).json({ id: idReceta, mensaje: mensaje })
+      res.status(201).json({ id: idReceta, mensaje: mensaje })
       return
    }
 
@@ -119,7 +119,7 @@ class RecetaController {
       }
 
       const id = result.data.id
-      const { mensaje, error } = await RecetaService.deleteReceta(id);
+      const { mensaje, error } = await RecetaService.deleteReceta(id)
       if (error) {
          res.status(500).json({ error: 'Error al realizar la eliminación', mensaje: mensaje, details: error.message })
          return

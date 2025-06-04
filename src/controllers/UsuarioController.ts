@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 import UsuarioService from "../services/UsuarioService"
 import { cuerpoLoginSchema } from "../schemas/UsuarioSchema"
-import { COOKIE_OPTIONS } from "types/usuario"
+import { COOKIE_OPTIONS } from "../types/usuario"
 
 class UsuarioController {
    public async createUser(req: Request, res: Response) {
@@ -18,7 +18,7 @@ class UsuarioController {
          return
       }
 
-      res.status(200).json({ mensaje: mensaje })
+      res.status(201).json({ mensaje: mensaje })
       return
    }
 
