@@ -13,11 +13,7 @@ class RecetaController {
       const id = result.data.id
       const { data, error } = await RecetaService.getReceta(id)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
-         return
-      }
-      if (!data) {
-         res.status(404).json({ response: 'Receta no disponible' })
+         res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
          return
       }
 
@@ -35,11 +31,7 @@ class RecetaController {
       const { pais, categoria, pag }= result.data
       const { data, count, error } = await RecetaService.getRecetas(pais ?? null, categoria ?? null, pag)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
-         return
-      }
-      if (data && data.length == 0) {
-         res.status(404).json({ response: 'Recetas no disponibles' })
+         res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
          return
       }
 
@@ -57,11 +49,7 @@ class RecetaController {
       const prompt = result.data.solicitud
       const { data, error } = await RecetaService.getMejoresRecetas(prompt)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la consulta', details: error.message })
-         return
-      }
-      if ((data?.mejores.length == 0) && (data?.extra.length == 0)) {
-         res.status(404).json({ response: 'No se pudo encontrar ninguna recomendación para la solicitud. Intenta reformularla' })
+         res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
          return
       }
 
@@ -79,7 +67,7 @@ class RecetaController {
       const cuerpo = result.data
       const { idReceta, mensaje, error } = await RecetaService.createReceta(cuerpo)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la creación', mensaje: mensaje, details: error.message })
+         res.status(error.code).json({ error: 'Error al realizar la creación', details: error.mensaje })
          return
       }
 
@@ -103,7 +91,7 @@ class RecetaController {
       const id = resultID.data.id
       const { mensaje, error } = await RecetaService.updateReceta(cuerpo, id)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la actualización', mensaje: mensaje, details: error.message })
+         res.status(error.code).json({ error: 'Error al realizar la actualización', details: error.mensaje })
          return
       }
 
@@ -121,7 +109,7 @@ class RecetaController {
       const id = result.data.id
       const { mensaje, error } = await RecetaService.deleteReceta(id)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar la eliminación', mensaje: mensaje, details: error.message })
+         res.status(error.code).json({ error: 'Error al realizar la eliminación', details: error.mensaje })
          return
       }
 

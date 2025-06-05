@@ -14,7 +14,7 @@ class UsuarioController {
       const { mail, password } = result.data
       const { mensaje, error } = await UsuarioService.register(mail, password)
       if (error) {
-         res.status(500).json({ error: 'Error al realizar el registro', mensaje: mensaje, details: error.message })
+         res.status(error.code).json({ error: 'Error al realizar el registro', details: error.mensaje })
          return
       }
 
@@ -32,7 +32,7 @@ class UsuarioController {
       const { mail, password } = result.data
       const { accessToken, refreshToken, error } = await UsuarioService.login(mail, password)
       if (error) {
-         res.status(500).json({ error: 'Error al iniciar sesión', details: error.message })
+         res.status(error.code).json({ error: 'Error al iniciar sesión', details: error.mensaje })
          return
       }
 

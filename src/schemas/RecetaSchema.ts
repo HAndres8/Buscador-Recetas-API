@@ -11,6 +11,7 @@ export const validarIdSchema = z.object({
 export const resumenRecetasSchema = z.object({
    pais: z.string().trim()
       .length(3, { message: 'El formato del país debe ser de 3 letras' })
+      .regex(/^[A-Z]{3}$/, { message: 'El país debe estar en mayúsculas' })
       .optional(),
    categoria: z.string().trim().optional(),
    pag: z.coerce.number()

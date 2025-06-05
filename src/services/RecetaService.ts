@@ -2,6 +2,7 @@ import ConnectionSupabase from "../config/Connection"
 import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
 import { analizarRecetas, filtroCaracteristicas, validarPrompt } from "../utils/modelos"
 import { embeddingReceta, embeddingSolicitud } from "../utils/embeddings"
+import { RespuestaError } from "../types/error"
 
 class RecetaService {
    private static readonly NIVEL_DE_ACEPTACION = 0.585
@@ -9,8 +10,7 @@ class RecetaService {
    private static readonly NUMERO_DE_RECETAS_EXTRA = 30 - this.NUMERO_DE_RECETAS
 
    // Muestra información de una receta en especifico
-   public static async getReceta(idReceta: number): Promise<{ data: Receta|null, error: any }> {
-      let result: Receta | null = null
+   public static async getReceta(idReceta: number): Promise<{ data: Receta|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
 
       // Obtener toda la informacion relacionada a esa receta
@@ -20,27 +20,29 @@ class RecetaService {
                   ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre), cantidad, especificacion)`)
          .eq('id', idReceta)
          .single()
+      if (error) {
+         console.error({ details: error.details, message: error.message })
+         return { data: null, error: { mensaje: 'La receta no existe', code: 404}}
+      }
       
-      if (data) {
-         // Extraer el nombre del ingrediente fuera del objeto
-         const ingredientesFinal = data.ingredientes.map((ingre) => ({
-            id: ingre.ingrediente.id,
-            nombre: ingre.ingrediente.nombre,
-            cantidad: ingre.cantidad,
-            especificacion: ingre.especificacion,
-         }))
+      // Extraer el nombre del ingrediente fuera del objeto
+      const ingredientesFinal = data.ingredientes.map((ingre) => ({
+         id: ingre.ingrediente.id,
+         nombre: ingre.ingrediente.nombre,
+         cantidad: ingre.cantidad,
+         especificacion: ingre.especificacion,
+      }))
 
-         result = {
-            ...data,
-            ingredientes: ingredientesFinal,
-         }
+      const result: Receta = {
+         ...data,
+         ingredientes: ingredientesFinal,
       }
 
-      return { data: result, error }
+      return { data: result, error: null }
    }
 
    // Muestra un resumen de varias de las recetas
-   public static async getRecetas(pais: string|null, categoria: string|null, page: number): Promise<{ data: ResumenReceta[]|null, count: number, error: any }> {
+   public static async getRecetas(pais: string|null, categoria: string|null, page: number): Promise<{ data: ResumenReceta[]|null, count: number, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       // Bloques de 10 recetas por pagina
       const desde = (page - 1) * 10
@@ -55,8 +57,15 @@ class RecetaService {
             .eq('pais', pais)
             .order('nombre', { ascending: true })
             .range(desde,hasta)
+         if (error) {
+            console.error({ details: error.details, message: error.message })
+            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+         }
+         if (data.length == 0) {
+            return { data: null, count: 0, error: { mensaje: 'No existen recetas para ese país', code: 404}}
+         }
 
-         return { data, count: count ?? 0, error }
+         return { data, count: count!, error: null}      // Si no da error, count es un numero
       }
       // Buscar recetas de esa categoria en especifico
       if (categoria) {
@@ -66,10 +75,14 @@ class RecetaService {
             .eq('nombre', categoria)
             .single()
          if (errorCategoria) {
-            return { data: categoriaData, count: 0, error: errorCategoria }
+            console.error({ details: errorCategoria.details, message: errorCategoria.message })
+            return { data: null, count: 0, error: { mensaje: 'La categoria no existe', code: 404}}
          }
          
          const recetasIDs = categoriaData.Receta.map(receta => receta.id)
+         if (recetasIDs.length == 0) {
+            return { data: null, count: 0, error: { mensaje: 'No existen recetas para esa categoria', code: 404}}
+         }
 
          // Buscar las recetas segun los IDs obtenidos anteriormente
          const { data: recetasData, count, error: errorReceta } = await supabase.from('Receta')
@@ -79,8 +92,12 @@ class RecetaService {
             .in('id', recetasIDs)
             .order('nombre', { ascending: true })
             .range(desde,hasta)
+         if (errorReceta) {
+            console.error({ details: errorReceta.details, message: errorReceta.message })
+            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+         }
 
-         return { data: recetasData, count: count ?? 0, error: errorReceta }
+         return { data: recetasData, count: count!, error: null }
       }
 
       // Si no se especifica ninguna, se devuelven en general
@@ -90,16 +107,23 @@ class RecetaService {
                   { count: 'exact' })
          .order('nombre', { ascending: true })
          .range(desde,hasta)
+      if (error) {
+         console.error({ details: error.details, message: error.message })
+         return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+      }
+      if (data.length == 0) {
+         return { data: null, count: 0, error: { mensaje: 'No existen recetas disponibles', code: 404}}
+      }
       
-      return { data, count: count ?? 0, error }
+      return { data, count: count!, error: null }
    }
 
    // Muestra las recetas recomendadas segun el prompt del usuario. Si es especifican categorias e ingredientes, los resultados seran mejores
-   public static async getMejoresRecetas(prompt: string): Promise<{ data: { mejores: ResumenReceta[], extra: ResumenReceta[] }|null, error: any }> {
+   public static async getMejoresRecetas(prompt: string): Promise<{ data: { mejores: ResumenReceta[], extra: ResumenReceta[] }|null, error: RespuestaError|null }> {
       // Comprobar que el prompt sea adecuado para recetas
       const promptValido = await validarPrompt(prompt)
       if (!promptValido) {
-         return { data: null, error: new Error('Solicitud no procesada. Intenta especificar que vas a preparar recetas') }
+         return { data: null, error: { mensaje: 'Solicitud no procesada. Intenta especificar que vas a preparar recetas', code: 400 }}
       }
 
       const supabase = ConnectionSupabase()
@@ -145,7 +169,7 @@ class RecetaService {
 
       const solicitudUsuario = await embeddingSolicitud(prompt)
       if (!solicitudUsuario) {
-         return { data: null, error: new Error('No se pudo procesar la solicitud del usuario') }
+         return { data: null, error: { mensaje: 'No se puede procesar la solicitud del usuario', code: 500 }}
       }
 
       let idsMejoresRecetas:number[] = []
@@ -158,7 +182,8 @@ class RecetaService {
       if (primerFiltro) {
          const { data, error } = await queryEspecifica
          if (error) {
-            return { data: null, error }
+            console.error({ details: error.details, message: error.message })
+            return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
          }
 
          const idsRecetasEspe = data.map(receta => receta.id)
@@ -170,7 +195,8 @@ class RecetaService {
                'match_count': this.NUMERO_DE_RECETAS
             })
             if (error) {
-               return { data: null, error }
+               console.error({ details: error.details, message: error.message })
+               return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
             }
             
             idsMejoresRecetas = data.map(r => r.id)
@@ -181,7 +207,8 @@ class RecetaService {
          if ((cantidadRecetas < this.NUMERO_DE_RECETAS) && primerFiltroGenerico) {
             const { data, error } = await queryGenerica
             if (error) {
-               return { data: null, error }
+               console.error({ details: error.details, message: error.message })
+               return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
             }
 
             // No incluir las recetas que se almacenaron anteriormente
@@ -196,7 +223,8 @@ class RecetaService {
                   'match_count': this.NUMERO_DE_RECETAS - cantidadRecetas
                })
                if (error) {
-                  return { data: null, error }
+                  console.error({ details: error.details, message: error.message })
+                  return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
                }
                
                idsMejoresRecetas.push(...data.map(r => r.id))
@@ -212,7 +240,8 @@ class RecetaService {
             'match_count': this.NUMERO_DE_RECETAS
          })
          if (error) {
-            return { data: null, error }
+            console.error({ details: error.details, message: error.message })
+            return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
          }
          
          idsMejoresRecetas = data.map(r => r.id)
@@ -229,11 +258,17 @@ class RecetaService {
          'match_count': this.NUMERO_DE_RECETAS_EXTRA
       })
       if (auxiliaresError) {
-         return { data: null, error: auxiliaresError }
+         console.error({ details: auxiliaresError.details, message: auxiliaresError.message })
+         return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
       }
 
       const idsRecetasAuxiliares = auxiliaresData.map(r => r.id)
 
+
+      if ((idsMejoresRecetas.length == 0) && (idsRecetasAuxiliares.length == 0 )) {
+         return { data: null, error: { mensaje: 'No se pudo encontrar ninguna recomendación para la solicitud. Intenta reformularla', code: 404 }}
+      }
+      
 
       // * SEGUNDO FILTRO
       // [1] Obtener la informacion de las mejores para reclasificarla (por eso se trae mas cosas)
@@ -254,10 +289,12 @@ class RecetaService {
       const { data: recetasExtraData, error: errorRecetasExtra } = recetasExtra
 
       if (errorMejoresRecetas) {
-         return { data: null, error: errorMejoresRecetas }
+         console.error({ details: errorMejoresRecetas.details, message: errorMejoresRecetas.message })
+         return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
       }
       if (errorRecetasExtra) {
-         return { data: null, error: errorRecetasExtra }
+         console.error({ details: errorRecetasExtra.details, message: errorRecetasExtra.message })
+         return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
       }
 
       // Diccionario para acceder con mayor facilidad a los datos a la hora de entregar la ultima estructura
@@ -295,7 +332,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
    // Agrega una receta a la BD y la relaciona con sus categorias e ingredientes
    // * Falta el cargado de imagenes desde el front
-   public static async createReceta(body: BodyCrearReceta): Promise<{ idReceta: number|null, mensaje: string|null, error: any }> {
+   public static async createReceta(body: BodyCrearReceta): Promise<{ idReceta: number|null, mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       let nuevaReceta: CrearReceta = {
          nombre: body.nombre,
@@ -315,7 +352,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .eq('nombre', nuevaReceta.nombre)
          .single()
       if (existeReceta) {
-         return { idReceta: null, mensaje: null, error: new Error('No es posible agregar la receta, ya existe una con el mismo nombre') }
+         return { idReceta: null, mensaje: null, error: { mensaje: 'Ya existe una receta con el mismo nombre', code: 409}}
       }
 
 
@@ -323,7 +360,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
       const embeddingGenerado = await embeddingReceta(nuevaReceta.nombre, nombresCategorias, nombresIngredientes, nuevaReceta.dificultad)
       if (!embeddingGenerado) {
-         return { idReceta: null, mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
+         return { idReceta: null, mensaje: null, error: { mensaje: 'No se puede generar el embedding de la receta', code: 500 }}
       }
       nuevaReceta.embed_receta = embeddingGenerado
       
@@ -343,7 +380,8 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
       if (errorAgregar) {
-         return { idReceta: null, mensaje: 'No fue posible crear la receta', error: errorAgregar }
+         console.error({ details: errorAgregar.details, message: errorAgregar.message })
+         return { idReceta: null, mensaje: null, error: { mensaje: 'No fue posible crear la receta', code: 500 }}
       }
 
       return { idReceta: idNuevaReceta, mensaje: 'Receta creada y relacionada correctamente', error: null }
@@ -351,7 +389,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
    // Actualizar la informacion de una receta
    // * Falta la actualizacion de imagenes desde el front
-   public static async updateReceta(body: BodyCrearReceta, idReceta: number): Promise<{ mensaje: string|null, error: any }> {
+   public static async updateReceta(body: BodyCrearReceta, idReceta: number): Promise<{ mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       let miReceta: CrearReceta = {
          nombre: body.nombre,
@@ -373,7 +411,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .eq('id', idReceta)
          .single()
       if (!existeReceta) {
-         return { mensaje: null, error: new Error('No se encuentra la ID de la receta a actualizar') }
+         return { mensaje: null, error: { mensaje: 'La receta a actualizar no existe', code: 404 }}
       }
 
 
@@ -385,7 +423,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
          const embeddingGenerado = await embeddingReceta(miReceta.nombre, nombresCategorias, nombresIngredientes, miReceta.dificultad)
          if (!embeddingGenerado) {
-            return { mensaje: null, error: new Error('No se pudo generar el embedding de la receta') }
+            return { mensaje: null, error: { mensaje: 'No se puede generar el embedding de la receta', code: 500 }}
          }
          miReceta.embed_receta = embeddingGenerado
       } else {
@@ -409,7 +447,8 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
       if (errorActualizar) {
-         return { mensaje: 'No fue posible actualizar la receta', error: errorActualizar }
+         console.error({ details: errorActualizar.details, message: errorActualizar.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible actualizar la receta', code: 500 }}
       }
 
       return { mensaje: 'Receta actualizada y relacionada correctamente', error: null }
@@ -417,7 +456,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
    // Eliminar una receta y todas sus relaciones
    // * Falta la eliminacion de las imagenes
-   public static async deleteReceta(idReceta: number): Promise<{ mensaje: string|null, error: any }> {
+   public static async deleteReceta(idReceta: number): Promise<{ mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
 
       const { error: errorBuscarReceta } = await supabase.from('Receta')
@@ -425,14 +464,16 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .eq('id', idReceta)
          .single()
       if (errorBuscarReceta) {
-         return { mensaje: 'La receta no existe', error: errorBuscarReceta }
+         console.error({ details: errorBuscarReceta.details, message: errorBuscarReceta.message })
+         return { mensaje: null, error: { mensaje: 'La receta a eliminar no existe', code: 404}}
       }
 
       const { error: errorEliminarReceta } = await supabase.from('Receta')
          .delete()
          .eq('id', idReceta)
       if (errorEliminarReceta) {
-         return { mensaje: null, error: errorEliminarReceta }
+         console.error({ details: errorEliminarReceta.details, message: errorEliminarReceta.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible eliminar la receta', code: 500 }}
       }
       
       return { mensaje: 'Receta eliminada correctamente', error: null }

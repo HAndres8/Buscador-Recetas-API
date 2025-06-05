@@ -2,11 +2,12 @@ import bcrypt from "bcrypt"
 import ConnectionSupabase from "../config/Connection"
 import { generarAccessToken, generarRefreshToken } from "../utils/auth"
 import { CuerpoToken } from "../types/usuario"
+import { RespuestaError } from "../types/error"
 
 class UsuarioService {
    
    // Crea el nuevo usuario en la base de datos
-   public static async register(mail: string, password: string): Promise<{ mensaje: string|null, error: any }> {
+   public static async register(mail: string, password: string): Promise<{ mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       
       const { data: existeUsuario } = await supabase.from('Usuario')
@@ -14,7 +15,7 @@ class UsuarioService {
          .eq('correo', mail)
          .single()
       if (existeUsuario) {
-         return { mensaje: null, error: new Error('No es posible registrar el correo del usuario') }
+         return { mensaje: null, error: { mensaje: 'No es posible registrar el correo del usuario', code: 409 }}
       }
 
       const nuevaPassword = await bcrypt.hash(password, Number(process.env.SALTOS!))
@@ -26,14 +27,15 @@ class UsuarioService {
             'rol': 'usuario'
          })
       if (error) {
-         return { mensaje: 'No es posible registrar al nuevo usuario', error: error }
+         console.error({ details: error.details, message: error.message })
+         return { mensaje: null, error: { mensaje: 'No es posible registrar al nuevo usuario', code: 500 }}
       }
 
       return { mensaje: 'Usuario registrado exitosamente', error: null }
    }
 
    // Verifica la identidad del usuario y entrega tokens
-   public static async login(mail: string, password: string): Promise<{ accessToken?: string, refreshToken?: string, error?: any }> {
+   public static async login(mail: string, password: string): Promise<{ accessToken?: string, refreshToken?: string, error?: RespuestaError }> {
       const supabase = ConnectionSupabase()
       
       const { data: existeUsuario } = await supabase.from('Usuario')
@@ -41,13 +43,13 @@ class UsuarioService {
          .eq('correo', mail)
          .single()
       if (!existeUsuario) {
-         return { error: new Error('No es posible iniciar sesión con este correo') }
+         return { error: { mensaje: 'Usuario o contraseña incorrectos', code: 401 }}
       }
 
 
       const valida = await bcrypt.compare(password, existeUsuario.contrasenya)
       if (!valida) {
-         return { error: new Error('Usuario o contraseña incorrectos') }
+         return { error: { mensaje: 'Usuario o contraseña incorrectos', code: 401 }}
       }
 
       const payload: CuerpoToken = {
