@@ -7,6 +7,7 @@ import { Express } from "express"
 import ConnectionSupabase from "./Connection"
 import RecetaRoute from "../routes/RecetaRoute"
 import UsuarioRoute from "../routes/UsuarioRoute"
+import CategoriaRoute from "../routes/CategoriaRoute"
 
 class Server {
    public app: Express
@@ -31,6 +32,7 @@ class Server {
    public startRoutes() {
       this.app.use('/api/recetas', RecetaRoute)
       this.app.use('/api/usuarios', UsuarioRoute)
+      this.app.use('/api/categorias', CategoriaRoute)
    }
 
    public startServer() {
