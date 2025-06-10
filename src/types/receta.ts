@@ -38,18 +38,6 @@ export interface ResumenReceta {
    imagen_url: string
 }
 
-export interface CrearReceta {
-   nombre: string
-   pasos: string[]
-   pais: string
-   duracion: number
-   porciones: number
-   etiqueta_nutricional: string[]
-   dificultad: Database["public"]["Enums"]["dificultades"]
-   imagen_url: string
-   embed_receta: string | null
-}
-
 export interface BodyCrearReceta {
    nombre: string
    pasos: string[]

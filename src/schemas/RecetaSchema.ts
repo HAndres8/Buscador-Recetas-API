@@ -52,7 +52,7 @@ export const cuerpoRecetaSchema = z.object({
       z.object({
          id: z.number().int().positive(),
          nombre: z.string().trim().min(1)
-      }).strict()
+      })
    ).nonempty({ message: 'Debes especificar las categorias de la receta' }),
    ingredientes: z.array(
       z.object({
@@ -60,7 +60,7 @@ export const cuerpoRecetaSchema = z.object({
          nombre: z.string().trim().min(1),
          cantidad: z.string().trim().min(1),
          especificacion: z.string().trim().min(1).nullable()
-      }).strict()
+      })
    ).nonempty({ message: 'Debes especificar los ingredientes de la receta' })
 }).refine(data => data.imagen.startsWith(data.pais), {
    message: 'La imagen debe comenzar con el codigo del pais'

@@ -140,7 +140,7 @@ export type Database = {
         Row: {
           dificultad: Database["public"]["Enums"]["dificultades"]
           duracion: number
-          embed_receta: string | null
+          embed_receta: string
           etiqueta_nutricional: string[]
           id: number
           imagen_url: string
@@ -152,7 +152,7 @@ export type Database = {
         Insert: {
           dificultad: Database["public"]["Enums"]["dificultades"]
           duracion: number
-          embed_receta?: string | null
+          embed_receta: string
           etiqueta_nutricional: string[]
           id?: number
           imagen_url: string
@@ -164,7 +164,7 @@ export type Database = {
         Update: {
           dificultad?: Database["public"]["Enums"]["dificultades"]
           duracion?: number
-          embed_receta?: string | null
+          embed_receta?: string
           etiqueta_nutricional?: string[]
           id?: number
           imagen_url?: string

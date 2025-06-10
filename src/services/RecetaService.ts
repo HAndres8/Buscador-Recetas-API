@@ -1,5 +1,5 @@
 import ConnectionSupabase from "../config/Connection"
-import { CrearReceta, BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
+import { BodyCrearReceta, Receta, ResumenReceta } from "../types/receta"
 import { analizarRecetas, filtroCaracteristicas, validarPrompt } from "../utils/modelos"
 import { embeddingReceta, embeddingSolicitud } from "../utils/embeddings"
 import { RespuestaError } from "../types/error"
@@ -334,22 +334,11 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
    // * Falta el cargado de imagenes desde el front
    public static async createReceta(body: BodyCrearReceta): Promise<{ idReceta: number|null, mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
-      let nuevaReceta: CrearReceta = {
-         nombre: body.nombre,
-         pasos: body.pasos,
-         pais: body.pais,
-         duracion: body.duracion,
-         porciones: body.porciones,
-         etiqueta_nutricional: body.etiquetas,
-         dificultad: body.dificultad,
-         imagen_url: body.imagen,
-         embed_receta: ''
-      }
       const { categorias, ingredientes } = body
 
       const { data: existeReceta } = await supabase.from('Receta')
          .select('id')
-         .eq('nombre', nuevaReceta.nombre)
+         .eq('nombre', body.nombre)
          .single()
       if (existeReceta) {
          return { idReceta: null, mensaje: null, error: { mensaje: 'Ya existe una receta con el mismo nombre', code: 409}}
@@ -358,24 +347,24 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       const nombresCategorias = categorias.map(c => c.nombre).join(', ')
       const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
-      const embeddingGenerado = await embeddingReceta(nuevaReceta.nombre, nombresCategorias, nombresIngredientes, nuevaReceta.dificultad)
+      const embeddingGenerado = await embeddingReceta(body.nombre, nombresCategorias, nombresIngredientes, body.dificultad)
       if (!embeddingGenerado) {
          return { idReceta: null, mensaje: null, error: { mensaje: 'No se puede generar el embedding de la receta', code: 500 }}
       }
-      nuevaReceta.embed_receta = embeddingGenerado
+      const embed_receta = embeddingGenerado
       
 
       // Despues de aqui se llama a la funcion que maneja insercion y relaciones en un solo llamado
       const { data: idNuevaReceta, error: errorAgregar } = await supabase.rpc('agregar_recetas_con_relaciones', {
-         'p_nombre': nuevaReceta.nombre,
-         'p_pasos': nuevaReceta.pasos,
-         'p_pais': nuevaReceta.pais,
-         'p_duracion': nuevaReceta.duracion,
-         'p_porciones': nuevaReceta.porciones,
-         'p_etiquetas': nuevaReceta.etiqueta_nutricional,
-         'p_dificultad': nuevaReceta.dificultad,
-         'p_imagen': nuevaReceta.imagen_url,
-         'p_embedding': nuevaReceta.embed_receta,
+         'p_nombre': body.nombre,
+         'p_pasos': body.pasos,
+         'p_pais': body.pais,
+         'p_duracion': body.duracion,
+         'p_porciones': body.porciones,
+         'p_etiquetas': body.etiquetas,
+         'p_dificultad': body.dificultad,
+         'p_imagen': body.imagen,
+         'p_embedding': embed_receta,
          'p_categorias': categorias,
          'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
@@ -391,18 +380,8 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
    // * Falta la actualizacion de imagenes desde el front
    public static async updateReceta(body: BodyCrearReceta, idReceta: number): Promise<{ mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
-      let miReceta: CrearReceta = {
-         nombre: body.nombre,
-         pasos: body.pasos,
-         pais: body.pais,
-         duracion: body.duracion,
-         porciones: body.porciones,
-         etiqueta_nutricional: body.etiquetas,
-         dificultad: body.dificultad,
-         imagen_url: body.imagen,
-         embed_receta: ''
-      }
       const { categorias, ingredientes } = body
+      let embed_receta = ''
 
       const { data: existeReceta } = await supabase.from('Receta')
          .select(`nombre, dificultad, embed_receta,
@@ -417,32 +396,32 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
 
       // Comprobar si los campos claves del embedding fueron cambiados, compara los del body con los de la BD
       // Si hay cambios se regenera el embedding, y si no se toma el almacenado
-      const cambios = comprobarCambiosEmbedding(miReceta.nombre, miReceta.dificultad, categorias, ingredientes, existeReceta)
+      const cambios = comprobarCambiosEmbedding(body.nombre, body.dificultad, categorias, ingredientes, existeReceta)
       if (cambios) {
          const nombresCategorias = categorias.map(c => c.nombre).join(', ')
          const nombresIngredientes = ingredientes.map(i => i.nombre).join(', ')
-         const embeddingGenerado = await embeddingReceta(miReceta.nombre, nombresCategorias, nombresIngredientes, miReceta.dificultad)
+         const embeddingGenerado = await embeddingReceta(body.nombre, nombresCategorias, nombresIngredientes, body.dificultad)
          if (!embeddingGenerado) {
             return { mensaje: null, error: { mensaje: 'No se puede generar el embedding de la receta', code: 500 }}
          }
-         miReceta.embed_receta = embeddingGenerado
+         embed_receta = embeddingGenerado
       } else {
-         miReceta.embed_receta = existeReceta.embed_receta
+         embed_receta = existeReceta.embed_receta
       }
 
 
       // Despues de aqui se llama a la funcion que maneja actualizacion y relaciones en un solo llamado
       const { error: errorActualizar } = await supabase.rpc('actualizar_recetas_con_relaciones', {
          'p_id': idReceta,
-         'p_nombre': miReceta.nombre,
-         'p_pasos': miReceta.pasos,
-         'p_pais': miReceta.pais,
-         'p_duracion': miReceta.duracion,
-         'p_porciones': miReceta.porciones,
-         'p_etiquetas': miReceta.etiqueta_nutricional,
-         'p_dificultad': miReceta.dificultad,
-         'p_imagen': miReceta.imagen_url,
-         'p_embedding': miReceta.embed_receta ?? '',
+         'p_nombre': body.nombre,
+         'p_pasos': body.pasos,
+         'p_pais': body.pais,
+         'p_duracion': body.duracion,
+         'p_porciones': body.porciones,
+         'p_etiquetas': body.etiquetas,
+         'p_dificultad': body.dificultad,
+         'p_imagen': body.imagen,
+         'p_embedding': embed_receta,
          'p_categorias': categorias,
          'p_ingredientes': JSON.parse(JSON.stringify(ingredientes))          // No detecta la interfaz como JSON valido
       })
