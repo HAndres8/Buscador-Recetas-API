@@ -1,5 +1,6 @@
 import { Router } from "express"
 import categoriaController from "../controllers/CategoriaController"
+import { autenticarToken, autorizarToken } from "../middlewares/authMiddleware"
 
 class CategoriaRoute {
    public ApiRoute: Router
@@ -10,7 +11,8 @@ class CategoriaRoute {
    }
 
    public routesConfig() {
-      this.ApiRoute.get('/all', categoriaController.getCategorias)
+      this.ApiRoute.get('/all', autenticarToken, autorizarToken, categoriaController.getCategorias)
+      this.ApiRoute.post('/crear-categoria', autenticarToken, autorizarToken, categoriaController.createCategoria)
    }
 }
 
