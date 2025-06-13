@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import CategoriaService from "../services/CategoriaService"
-import { cuerpoCategoriaSchema } from "../schemas/CategoriaSchema"
+import { cuerpoCategoriaSchema, validarIdSchema } from "../schemas/CategoriaSchema"
 
 class CategoriaController {
    public async getCategorias(req: Request, res: Response) {
@@ -29,6 +29,30 @@ class CategoriaController {
       }
 
       res.status(201).json({ id: idCategoria, mensaje: mensaje })
+      return
+   }
+
+   public async updateCategoria(req: Request, res: Response) {
+      const resultBody = cuerpoCategoriaSchema.safeParse(req.body)
+      const resultID = validarIdSchema.safeParse(req.params)
+      if (!resultBody.success) {
+         res.status(400).json({ error: resultBody.error.issues[0].message })
+         return
+      }
+      if (!resultID.success) {
+         res.status(400).json({ error: resultID.error.issues[0].message })
+         return
+      }
+
+      const cuerpo = resultBody.data
+      const id = resultID.data.id
+      const { mensaje, error } = await CategoriaService.updateCategoria(cuerpo, id)
+      if (error) {
+         res.status(error.code).json({ error: 'Error al realizar la actualización', details: error.mensaje })
+         return
+      }
+
+      res.status(200).json({ mensaje: mensaje })
       return
    }
 }

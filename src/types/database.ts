@@ -196,6 +196,36 @@ export type Database = {
         }
         Relationships: []
       }
+      UsuarioReceta: {
+        Row: {
+          id_receta: number
+          id_usuario: number
+        }
+        Insert: {
+          id_receta: number
+          id_usuario: number
+        }
+        Update: {
+          id_receta?: number
+          id_usuario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "UsuarioReceta_id_receta_fkey"
+            columns: ["id_receta"]
+            isOneToOne: false
+            referencedRelation: "Receta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "UsuarioReceta_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -256,6 +286,18 @@ export type Database = {
         Returns: {
           id: number
           similarity: number
+        }[]
+      }
+      recetas_afectadas_por_categoria: {
+        Args: { p_categoria_id: number }
+        Returns: {
+          id: number
+        }[]
+      }
+      recetas_afectadas_por_ingrediente: {
+        Args: { p_ingrediente_id: number }
+        Returns: {
+          id: number
         }[]
       }
     }

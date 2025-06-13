@@ -13,6 +13,7 @@ class CategoriaRoute {
    public routesConfig() {
       this.ApiRoute.get('/all', autenticarToken, autorizarToken, categoriaController.getCategorias)
       this.ApiRoute.post('/crear-categoria', autenticarToken, autorizarToken, categoriaController.createCategoria)
+      this.ApiRoute.put('/actualizar-categoria/:id', autenticarToken, autorizarToken, categoriaController.updateCategoria)
    }
 }
 
