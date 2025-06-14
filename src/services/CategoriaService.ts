@@ -22,7 +22,7 @@ class CategoriaService {
       return { data, error: null }
    }
 
-   // Agregar una categoría a la BD
+   // Agrega una categoría a la BD
    public static async createCategoria(body: BodyCrearCategoria): Promise<{ idCategoria: number|null, mensaje: string|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       
@@ -59,7 +59,7 @@ class CategoriaService {
          return { mensaje: null, error: { mensaje: 'La categoría a actualizar no existe', code: 404 }}
       }
 
-      // Actualizar la categoria
+      // Actualizar primero para tomar el nuevo nombre en el embedding
       const { error: errorActualizar } = await supabase.from('Categoria')
          .update(body)
          .eq('id', idCategoria)
@@ -71,8 +71,18 @@ class CategoriaService {
 
       // Actualizar los embeddings de las recetas afectadas si cambia el nombre
       if (body.nombre !== existeCategoria.nombre) {
+         const { data: recetas, error: errorAfectadas } = await supabase.rpc('recetas_afectadas_por_categoria', {
+            'p_categoria_id': idCategoria
+         })
+         if (errorAfectadas) {
+            console.error({ details: errorAfectadas.details, message: errorAfectadas.message })
+            throw new Error('No fue posible obtener las recetas afectadas')
+         }
+
+         const idsRecetas = recetas.map(r => r.id)
+
          try {
-            nuevosEmbeddings = await generar_embeddings_recetas(idCategoria)
+            nuevosEmbeddings = await generar_embeddings_recetas(idsRecetas)
          } catch (e) {
             return { mensaje: null, error: { mensaje: (e as Error).message, code: 500 }}
          }
@@ -93,22 +103,71 @@ class CategoriaService {
 
       return { mensaje: 'Categoría actualizada correctamente', error: null }
    }
+
+   // Eliminar una categoría
+   public static async deleteCategoria(idCategoria: number): Promise<{ mensaje: string|null, error: RespuestaError|null }> {
+      const supabase = ConnectionSupabase()
+      let nuevosEmbeddings: { id: number, embedding: string }[] = []
+
+      const { error: errorBuscarCategoria } = await supabase.from('Categoria')
+         .select('id')
+         .eq('id', idCategoria)
+         .single()
+      if (errorBuscarCategoria) {
+         console.error({ details: errorBuscarCategoria.details, message: errorBuscarCategoria.message })
+         return { mensaje: null, error: { mensaje: 'La categoría a eliminar no existe', code: 404 }}
+      }
+
+
+      // Buscar las ids de las recetas antes de eliminar la categoría
+      const { data: recetas, error: errorAfectadas } = await supabase.rpc('recetas_afectadas_por_categoria', {
+         'p_categoria_id': idCategoria
+      })
+      if (errorAfectadas) {
+         console.error({ details: errorAfectadas.details, message: errorAfectadas.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible obtener las recetas afectadas', code: 500 }}
+      }
+
+      const idsRecetas = recetas.map(r => r.id)
+
+
+      // Eliminar la categoria
+      const { error: errorEliminarCategoria } = await supabase.from('Categoria')
+         .delete()
+         .eq('id', idCategoria)
+      if (errorEliminarCategoria) {
+         console.error({ details: errorEliminarCategoria.details, message: errorEliminarCategoria.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible eliminar la categoría', code: 500 }}
+      }
+
+
+      // Actualizar los embeddings de las recetas afectadas
+      try {
+         nuevosEmbeddings = await generar_embeddings_recetas(idsRecetas)
+      } catch (e) {
+         return { mensaje: null, error: { mensaje: (e as Error).message, code: 500 }}
+      }
+
+      // Actualizar las recetas
+      for (const aux of nuevosEmbeddings) {
+         const { error: errorEmbeddings } = await supabase.from('Receta')
+            .update({embed_receta: aux.embedding})
+            .eq('id', aux.id)
+         if (errorEmbeddings) {
+            console.error({ details: errorEmbeddings.details, message: errorEmbeddings.message })
+            return { mensaje: null, error: { mensaje: 'No fue posible actualizar el embedding de la receta', code: 500 }}
+         }
+      }
+
+      return { mensaje: 'Categoría eliminada correctamente', error: null }
+   }
 }
 
 
 // Genera unos nuevos embeddings por la eliminacion o actualizacion de la categoria
-async function generar_embeddings_recetas(idCategoria: number): Promise<{ id: number, embedding: string }[]> {
+async function generar_embeddings_recetas(idsRecetas: number[]): Promise<{ id: number, embedding: string }[]> {
    const supabase = ConnectionSupabase()
-   
-   const { data: recetas, error: errorAfectadas } = await supabase.rpc('recetas_afectadas_por_categoria', {
-      'p_categoria_id': idCategoria
-   })
-   if (errorAfectadas) {
-      console.error({ details: errorAfectadas.details, message: errorAfectadas.message })
-      throw new Error('No fue posible obtener las recetas afectadas')
-   }
 
-   const idsRecetas = recetas.map(r => r.id)
    const { data: recetasRelacionadas } = await supabase.from('Receta')
       .select(`id, nombre, dificultad, embed_receta,
                categorias: Categoria(id, nombre),
@@ -129,8 +188,8 @@ async function generar_embeddings_recetas(idCategoria: number): Promise<{ id: nu
             id: receta.id,
             embedding: embeddingGenerado
          }
-      }
-   ))
+      })
+   )
 }
 
 export default CategoriaService

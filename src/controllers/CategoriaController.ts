@@ -55,6 +55,24 @@ class CategoriaController {
       res.status(200).json({ mensaje: mensaje })
       return
    }
+
+   public async deleteCategoria(req: Request, res: Response) {
+      const result = validarIdSchema.safeParse(req.params)
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
+         return
+      }
+
+      const id = result.data.id
+      const { mensaje, error } = await CategoriaService.deleteCategoria(id)
+      if (error) {
+         res.status(error.code).json({ error: 'Error al realizar la eliminación', details: error.mensaje })
+         return
+      }
+
+      res.status(200).json({ mensaje: mensaje })
+      return
+   }
 }
 
 const categoriaController = new CategoriaController()
