@@ -26,7 +26,7 @@ Este proyecto consiste en el desarrollo de una API con información detallada so
 - [X] CRUD de recetas
 - [X] Endpoints para la autenticación y autorización
 - [X] Implementación de Cookies
-- [ ] CRUD de categorías
+- [X] CRUD de categorías
 - [ ] CRUD de ingredientes
 - [ ] Endpoints para las recetas favoritas del usuario
 - [ ] Funcionalidades finales

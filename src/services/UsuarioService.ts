@@ -18,17 +18,21 @@ class UsuarioService {
          return { mensaje: null, error: { mensaje: 'No es posible registrar el correo del usuario', code: 409 }}
       }
 
-      const nuevaPassword = await bcrypt.hash(password, Number(process.env.SALTOS!))
+      try {
+         const nuevaPassword = await bcrypt.hash(password, Number(process.env.SALTOS!))
 
-      const { error } = await supabase.from('Usuario')
-         .insert({
-            'correo': mail,
-            'contrasenya': nuevaPassword,
-            'rol': 'usuario'
-         })
-      if (error) {
-         console.error({ details: error.details, message: error.message })
-         return { mensaje: null, error: { mensaje: 'No es posible registrar al nuevo usuario', code: 500 }}
+         const { error } = await supabase.from('Usuario')
+            .insert({
+               'correo': mail,
+               'contrasenya': nuevaPassword,
+               'rol': 'usuario'
+            })
+         if (error) {
+            console.error({ details: error.details, message: error.message })
+            return { mensaje: null, error: { mensaje: 'No es posible registrar al nuevo usuario', code: 500 }}
+         }
+      } catch (error){
+         return { mensaje: null, error: { mensaje: 'Error al encriptar la contraseña', code: 500 }}
       }
 
       return { mensaje: 'Usuario registrado exitosamente', error: null }
@@ -47,9 +51,13 @@ class UsuarioService {
       }
 
 
-      const valida = await bcrypt.compare(password, existeUsuario.contrasenya)
-      if (!valida) {
-         return { error: { mensaje: 'Usuario o contraseña incorrectos', code: 401 }}
+      try {
+         const valida = await bcrypt.compare(password, existeUsuario.contrasenya)
+         if (!valida) {
+            return { error: { mensaje: 'Usuario o contraseña incorrectos', code: 401 }}
+         }
+      } catch (error) {
+         return { error: { mensaje: 'Error al comparar la contraseña', code: 500 }}
       }
 
       const payload: CuerpoToken = {
@@ -57,10 +65,14 @@ class UsuarioService {
          rol: existeUsuario.rol
       }
 
-      const accessToken = generarAccessToken(payload)
-      const refreshToken = generarRefreshToken(payload)
+      try {
+         const accessToken = generarAccessToken(payload)
+         const refreshToken = generarRefreshToken(payload)
 
-      return { accessToken, refreshToken }
+         return { accessToken, refreshToken }
+      } catch (error) {
+         return { error: { mensaje: 'No fue posible generar los tokens', code: 500 }}
+      }
    }
 }
 

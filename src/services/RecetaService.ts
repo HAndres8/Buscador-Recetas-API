@@ -22,7 +22,7 @@ class RecetaService {
          .single()
       if (error) {
          console.error({ details: error.details, message: error.message })
-         return { data: null, error: { mensaje: 'La receta no existe', code: 404}}
+         return { data: null, error: { mensaje: 'La receta no existe', code: 404 }}
       }
       
       // Extraer el nombre del ingrediente fuera del objeto
@@ -59,13 +59,13 @@ class RecetaService {
             .range(desde,hasta)
          if (error) {
             console.error({ details: error.details, message: error.message })
-            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
          }
          if (data.length == 0) {
-            return { data: null, count: 0, error: { mensaje: 'No existen recetas para ese país', code: 404}}
+            return { data: null, count: 0, error: { mensaje: 'No existen recetas para ese país', code: 404 }}
          }
 
-         return { data, count: count!, error: null}      // Si no da error, count es un numero
+         return { data, count: count!, error: null }      // Si no da error, count es un numero
       }
       // Buscar recetas de esa categoria en especifico
       if (categoria) {
@@ -76,12 +76,12 @@ class RecetaService {
             .single()
          if (errorCategoria) {
             console.error({ details: errorCategoria.details, message: errorCategoria.message })
-            return { data: null, count: 0, error: { mensaje: 'La categoria no existe', code: 404}}
+            return { data: null, count: 0, error: { mensaje: 'La categoria no existe', code: 404 }}
          }
          
          const recetasIDs = categoriaData.Receta.map(receta => receta.id)
          if (recetasIDs.length == 0) {
-            return { data: null, count: 0, error: { mensaje: 'No existen recetas para esa categoria', code: 404}}
+            return { data: null, count: 0, error: { mensaje: 'No existen recetas para esa categoria', code: 404 }}
          }
 
          // Buscar las recetas segun los IDs obtenidos anteriormente
@@ -94,7 +94,7 @@ class RecetaService {
             .range(desde,hasta)
          if (errorReceta) {
             console.error({ details: errorReceta.details, message: errorReceta.message })
-            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+            return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
          }
 
          return { data: recetasData, count: count!, error: null }
@@ -109,10 +109,10 @@ class RecetaService {
          .range(desde,hasta)
       if (error) {
          console.error({ details: error.details, message: error.message })
-         return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500}}
+         return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
       }
       if (data.length == 0) {
-         return { data: null, count: 0, error: { mensaje: 'No existen recetas disponibles', code: 404}}
+         return { data: null, count: 0, error: { mensaje: 'No existen recetas disponibles', code: 404 }}
       }
       
       return { data, count: count!, error: null }
@@ -341,7 +341,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .eq('nombre', body.nombre)
          .single()
       if (existeReceta) {
-         return { idReceta: null, mensaje: null, error: { mensaje: 'Ya existe una receta con el mismo nombre', code: 409}}
+         return { idReceta: null, mensaje: null, error: { mensaje: 'Ya existe una receta con el mismo nombre', code: 409 }}
       }
 
 
@@ -444,7 +444,7 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
          .single()
       if (errorBuscarReceta) {
          console.error({ details: errorBuscarReceta.details, message: errorBuscarReceta.message })
-         return { mensaje: null, error: { mensaje: 'La receta a eliminar no existe', code: 404}}
+         return { mensaje: null, error: { mensaje: 'La receta a eliminar no existe', code: 404 }}
       }
 
       const { error: errorEliminarReceta } = await supabase.from('Receta')
