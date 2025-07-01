@@ -70,31 +70,20 @@ class RecetaService {
       // Buscar recetas de esa categoria en especifico
       if (categoria) {
          // Obtener las recetas que pertenecen a esa categoria
-         const { data: categoriaData, error: errorCategoria } = await supabase.from('Categoria')
-            .select('Receta(id)')
-            .eq('nombre', categoria)
-            .single()
-         if (errorCategoria) {
-            console.error({ details: errorCategoria.details, message: errorCategoria.message })
-            return { data: null, count: 0, error: { mensaje: 'La categoria no existe', code: 404 }}
-         }
-         
-         const recetasIDs = categoriaData.Receta.map(receta => receta.id)
-         if (recetasIDs.length == 0) {
-            return { data: null, count: 0, error: { mensaje: 'No existen recetas para esa categoria', code: 404 }}
-         }
-
-         // Buscar las recetas segun los IDs obtenidos anteriormente
          const { data: recetasData, count, error: errorReceta } = await supabase.from('Receta')
-            .select(`id, nombre, pais, duracion, porciones, dificultad, imagen_url,
+            .select(`Categoria!inner(),
+                     id, nombre, pais, duracion, porciones, dificultad, imagen_url,
                      categorias: Categoria(id, nombre, grupo)`,
                      { count: 'exact' })
-            .in('id', recetasIDs)
+            .eq('Categoria.nombre', categoria)
             .order('nombre', { ascending: true })
             .range(desde,hasta)
          if (errorReceta) {
             console.error({ details: errorReceta.details, message: errorReceta.message })
             return { data: null, count: 0, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
+         }
+         if (recetasData.length == 0) {
+            return { data: null, count: 0, error: { mensaje: 'No existen recetas para esa categoría', code: 404 }}
          }
 
          return { data: recetasData, count: count!, error: null }
