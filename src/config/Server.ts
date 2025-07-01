@@ -4,10 +4,12 @@ import dotenv from "dotenv"
 import cookieParser from 'cookie-parser'
 import express from "express"
 import { Express } from "express"
+
 import ConnectionSupabase from "./Connection"
 import RecetaRoute from "../routes/RecetaRoute"
 import UsuarioRoute from "../routes/UsuarioRoute"
 import CategoriaRoute from "../routes/CategoriaRoute"
+import IngredienteRoute from "../routes/IngredienteRoute"
 
 class Server {
    public app: Express
@@ -33,6 +35,7 @@ class Server {
       this.app.use('/api/recetas', RecetaRoute)
       this.app.use('/api/usuarios', UsuarioRoute)
       this.app.use('/api/categorias', CategoriaRoute)
+      this.app.use('/api/ingredientes', IngredienteRoute)
    }
 
    public startServer() {

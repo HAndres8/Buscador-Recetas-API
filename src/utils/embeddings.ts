@@ -56,12 +56,12 @@ export async function generar_embeddings_recetas(idsRecetas: number[]): Promise<
    const supabase = ConnectionSupabase()
 
    const { data: recetasRelacionadas } = await supabase.from('Receta')
-      .select(`id, nombre, dificultad, embed_receta,
+      .select(`id, nombre, dificultad,
                categorias: Categoria(id, nombre),
                ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre))`)
       .in('id', idsRecetas)
    
-   if (!recetasRelacionadas || recetasRelacionadas.length == 0) throw new Error('No fue posible obtener las recetas afectadas')
+   if (!recetasRelacionadas) throw new Error('Error interno al obtener las recetas')
 
    return await Promise.all(
       recetasRelacionadas.map(async receta => {
