@@ -10,39 +10,47 @@ class RecetaService {
    private static readonly NUMERO_DE_RECETAS_EXTRA = 30 - this.NUMERO_DE_RECETAS
 
    // Muestra información de una receta en especifico
-   public static async getReceta(idReceta: number): Promise<{ data: Receta|null, error: RespuestaError|null }> {
+   public static async getReceta(idReceta: number, idUsuario?: number): Promise<{ data: Receta|null, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
 
       // Obtener toda la informacion relacionada a esa receta
-      const { data, error } = await supabase.from('Receta')
+      const { data: recetaData, error: errorReceta } = await supabase.from('Receta')
          .select(`id, nombre, pais, duracion, porciones, dificultad, pasos, etiqueta_nutricional, imagen_url,
                   categorias: Categoria(id, nombre,grupo),
                   ingredientes: IngredienteReceta(ingrediente: Ingrediente(id, nombre), cantidad, especificacion)`)
          .eq('id', idReceta)
          .single()
-      if (error) {
-         console.error({ details: error.details, message: error.message })
+      if (errorReceta) {
+         console.error({ details: errorReceta.details, message: errorReceta.message })
          return { data: null, error: { mensaje: 'La receta no existe', code: 404 }}
       }
       
       // Extraer el nombre del ingrediente fuera del objeto
-      const ingredientesFinal = data.ingredientes.map((ingre) => ({
+      const ingredientesFinal = recetaData.ingredientes.map((ingre) => ({
          id: ingre.ingrediente.id,
          nombre: ingre.ingrediente.nombre,
          cantidad: ingre.cantidad,
          especificacion: ingre.especificacion,
       }))
 
+      // Verificar si el usuario tiene la receta de favorito
+      const { data: userReceta } = await supabase.from('UsuarioReceta')
+         .select()
+         .match({ id_usuario: idUsuario, id_receta: idReceta })
+         .single()
+      
+      
       const result: Receta = {
-         ...data,
+         ...recetaData,
          ingredientes: ingredientesFinal,
+         favorito: userReceta ? true : false
       }
 
       return { data: result, error: null }
    }
 
    // Muestra un resumen de varias de las recetas
-   public static async getRecetas(pais: string|null, categoria: string|null, page: number): Promise<{ data: ResumenReceta[]|null, count: number, error: RespuestaError|null }> {
+   public static async getRecetas(page: number, pais?: string, categoria?: string): Promise<{ data: ResumenReceta[]|null, count: number, error: RespuestaError|null }> {
       const supabase = ConnectionSupabase()
       // Bloques de 10 recetas por pagina
       const desde = (page - 1) * 10

@@ -10,8 +10,9 @@ class RecetaController {
          return
       }
 
-      const id = result.data.id
-      const { data, error } = await RecetaService.getReceta(id)
+      const idReceta = result.data.id
+      const idUsuario = req.user?.id
+      const { data, error } = await RecetaService.getReceta(idReceta, idUsuario)
       if (error) {
          res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
          return
@@ -29,7 +30,7 @@ class RecetaController {
       }
 
       const { pais, categoria, pag }= result.data
-      const { data, count, error } = await RecetaService.getRecetas(pais ?? null, categoria ?? null, pag)
+      const { data, count, error } = await RecetaService.getRecetas(pag, pais, categoria)
       if (error) {
          res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
          return

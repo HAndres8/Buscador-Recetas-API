@@ -40,6 +40,28 @@ export const autorizarToken = (req: Request, res: Response, next: NextFunction) 
    return next()
 }
 
+export const verificarLogin = (req: Request, res: Response, next: NextFunction) => {
+   const refreshToken: string = req.cookies.refreshToken
+   const accessToken: string = req.cookies.accessToken
+
+   if (!accessToken) {
+      const user = regenerarAccessToken(res, refreshToken)
+      if (user) {
+         req.user = { id: user.id, rol: user.rol }
+      }
+
+      return next()
+   }
+
+   try {
+      const decoded = verificarAccessToken(accessToken)
+      req.user = { id: decoded.id, rol: decoded.rol }
+   } catch (error) {
+   }
+
+   return next()
+}
+
 function regenerarAccessToken(res: Response, refreshToken: string) {
    try {
       const decoded = verificarRefreshToken(refreshToken)

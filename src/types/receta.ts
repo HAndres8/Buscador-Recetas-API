@@ -25,6 +25,7 @@ export interface Receta {
    pasos: string[]
    etiqueta_nutricional: string[]
    imagen_url: string
+   favorito: boolean
 }
 
 export interface ResumenReceta {
