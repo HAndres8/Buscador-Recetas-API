@@ -117,6 +117,70 @@ class RecetaController {
       res.status(200).json({ mensaje: mensaje })
       return
    }
+
+
+   public async getFavoritas(req: Request, res: Response) {
+      const idUsuario = req.user?.id
+      if (!idUsuario) {
+         res.status(401).json({ error: 'Usuario no logueado' })
+         return
+      }
+
+      const { data, error } = await RecetaService.getRecetasFavoritas(idUsuario)
+      if (error) {
+         res.status(error.code).json({ error: 'Error al realizar la consulta', details: error.mensaje })
+         return
+      }
+
+      res.status(200).json(data)
+      return
+   }
+
+   public async agregarFavorito(req: Request, res: Response) {
+      const result = validarIdSchema.safeParse(req.params)
+      const idUsuario = req.user?.id
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
+         return
+      }
+      if (!idUsuario) {
+         res.status(401).json({ error: 'Usuario no logueado' })
+         return
+      }
+
+      const idReceta = result.data.id
+      const { mensaje, error } = await RecetaService.agregarRecetaFavorita(idReceta, idUsuario)
+      if (error) {
+         res.status(error.code).json({ error: 'Error al realizar la relación', details: error.mensaje })
+         return
+      }
+
+      res.status(201).json({ mensaje: mensaje })
+      return
+   }
+
+   public async eliminarFavorito(req: Request, res: Response) {
+      const result = validarIdSchema.safeParse(req.params)
+      const idUsuario = req.user?.id
+      if (!result.success) {
+         res.status(400).json({ error: result.error.issues[0].message })
+         return
+      }
+      if (!idUsuario) {
+         res.status(401).json({ error: 'Usuario no logueado' })
+         return
+      }
+
+      const idReceta = result.data.id
+      const { mensaje, error } = await RecetaService.eliminarRecetaFavorita(idReceta, idUsuario)
+      if (error) {
+         res.status(error.code).json({ error: 'Error al realizar la desrelación', details: error.mensaje })
+         return
+      }
+
+      res.status(201).json({ mensaje: mensaje })
+      return
+   }
 }
 
 const recetaController = new RecetaController()

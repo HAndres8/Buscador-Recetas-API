@@ -17,6 +17,10 @@ class RecetaRoute {
       this.ApiRoute.post('/crear-receta', autenticarToken, autorizarToken, recetaController.createReceta)
       this.ApiRoute.put('/actualizar-receta/:id', autenticarToken, autorizarToken, recetaController.updateReceta)
       this.ApiRoute.delete('/eliminar-receta/:id', autenticarToken, autorizarToken, recetaController.deleteReceta)
+      
+      this.ApiRoute.get('/favoritas', verificarLogin, recetaController.getFavoritas)
+      this.ApiRoute.post('/agregar-favorito/:id', verificarLogin, recetaController.agregarFavorito)
+      this.ApiRoute.delete('/eliminar-favorito/:id', verificarLogin, recetaController.eliminarFavorito)
    }
 }
 

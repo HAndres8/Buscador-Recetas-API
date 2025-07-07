@@ -454,6 +454,57 @@ Adicionalmente tiene duración en minutos: ${receta.duracion}, porciones: ${rece
       
       return { mensaje: 'Receta eliminada correctamente', error: null }
    }
+
+
+   // Muestra un resumen de las recetas favoritas del usuario
+   public static async getRecetasFavoritas(idUsuario: number): Promise<{ data: ResumenReceta[]|null, error: RespuestaError|null }> {
+      const supabase = ConnectionSupabase()
+
+      const { data, error } = await supabase.from('Receta')
+         .select(`Usuario!inner(),
+                  id, nombre, pais, duracion, porciones, dificultad, imagen_url,
+                  categorias: Categoria(id, nombre, grupo)`)
+         .eq('Usuario.id', idUsuario)
+         .order('nombre', { ascending: true })
+      if (error) {
+         console.error({ details: error.details, message: error.message })
+         return { data: null, error: { mensaje: 'No se puede procesar la solicitud', code: 500 }}
+      }
+      if (data.length == 0) {
+         return { data: null, error: { mensaje: 'No tienes recetas favoritas', code: 404 }}
+      }
+      
+      return { data, error: null }
+   }
+   
+   // Agrega una receta a los favoritos del usuario
+   public static async agregarRecetaFavorita(idReceta: number, idUsuario: number) {
+      const supabase = ConnectionSupabase()
+
+      const { error } = await supabase.from('UsuarioReceta')
+         .insert({ id_receta: idReceta, id_usuario: idUsuario })
+      if (error) {
+         console.error({ details: error.details, message: error.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible agregar la receta a favoritos', code: 500 }}
+      }
+
+      return { mensaje: 'Receta agregada a favoritos exitosamente', error: null}
+   }
+
+   // Elimina una receta de los favoritos del usuario
+   public static async eliminarRecetaFavorita(idReceta: number, idUsuario: number) {
+      const supabase = ConnectionSupabase()
+
+      const { error } = await supabase.from('UsuarioReceta')
+         .delete()
+         .match({ id_receta: idReceta, id_usuario: idUsuario })
+      if (error) {
+         console.error({ details: error.details, message: error.message })
+         return { mensaje: null, error: { mensaje: 'No fue posible eliminar la receta de favoritos', code: 500 }}
+      }
+
+      return { mensaje: 'Receta eliminada de favoritos exitosamente', error: null}
+   }
 }
 
 
